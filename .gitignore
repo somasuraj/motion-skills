@@ -1,0 +1,9 @@
+__pycache__/
+*.pyc
+*.stackdump
+*.tmp.png
+.DS_Store
+Thumbs.db
+# build outputs made while testing a skill
+_test/
+_icon-src/

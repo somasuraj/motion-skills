@@ -1,0 +1,15 @@
+{
+  "name": "motion-skills",
+  "description": "The motion-skills plugin: animated slides, animated films and official-icon diagrams for Claude Code.",
+  "owner": {
+    "name": "somasuraj"
+  },
+  "plugins": [
+    {
+      "name": "motion-skills",
+      "source": "./",
+      "description": "Animated slides, animated films and official-icon diagrams: motion-slides, motion-videos and motion-diagrams.",
+      "version": "1.0.0"
+    }
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "name": "motion-skills",
+  "version": "1.0.0",
+  "description": "Three skills that work together: motion-slides (animated explainer decks in one HTML file), motion-videos (animated films with a generated score, exportable to MP4/GIF) and motion-diagrams (static diagrams with official icons as SVG, PNG, draw.io and Excalidraw, reusable inside decks and films).",
+  "author": {
+    "name": "somasuraj"
+  },
+  "repository": "https://github.com/somasuraj/motion-skills",
+  "keywords": ["presentations", "slides", "animation", "video", "diagrams", "architecture", "draw.io", "excalidraw", "aws"]
+}

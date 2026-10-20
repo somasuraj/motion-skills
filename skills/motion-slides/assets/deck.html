@@ -1,0 +1,1845 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>__TITLE__</title>
+<!--__FONTS__-->
+<style>
+html, body { height:100%; margin:0; }
+body { background:#0c0c0d; color:#f3f1ec; font:14px/1.4 system-ui, -apple-system, "Segoe UI", sans-serif; overflow:hidden; }
+#app { position:fixed; inset:0; display:flex; align-items:center; justify-content:center; background:var(--deck-outer, #0c0c0d); }
+#frame { position:relative; overflow:hidden; }
+#stage { position:absolute; left:0; top:0; overflow:hidden; transform-origin:0 0; }
+#bg, #world { position:absolute; left:0; top:0; transform-origin:0 0; }
+.dk-links { position:absolute; left:0; top:0; overflow:visible; pointer-events:none; }
+.dk-frame { position:absolute; left:0; top:0; box-sizing:border-box; transform-origin:0 0; }
+.dk-frame.dk-jump { cursor:pointer; }
+.dk-error { position:absolute; inset:0; display:flex; flex-direction:column; justify-content:center; padding:120px; gap:24px; background:#2a1416; color:#ffd9dc; font:32px/1.4 ui-monospace, monospace; }
+/* presenter chrome (outside the stage, so it never shows in stills) */
+#bar { position:fixed; left:50%; bottom:16px; z-index:30; transform:translateX(-50%); display:flex; align-items:center; gap:2px; padding:6px; border-radius:14px; background:rgba(18,18,20,.78); color:#f3f1ec; box-shadow:0 8px 30px rgba(0,0,0,.35); transition:opacity .35s; }
+@supports (backdrop-filter: blur(8px)) { #bar { backdrop-filter:blur(10px); background:rgba(18,18,20,.6); } }
+#bar.hide { opacity:0; pointer-events:none; }
+/* the caret is the bar itself, sitting on the text's baseline (an empty inline-block would sit below the line); the negative margin keeps it from pushing text */
+.dk-caret { display:inline-block; width:.55em; height:1.05em; margin-right:-.55em; vertical-align:-.2em; background:currentColor; opacity:.75; pointer-events:none; }
+#thPick { position:fixed; z-index:40; display:none; min-width:250px; padding:8px; border-radius:14px; background:rgba(22,22,24,.96); color:#f3f1ec; box-shadow:0 12px 34px rgba(0,0,0,.45), 0 0 0 1px rgba(255,255,255,.1); font:500 14px/1.2 system-ui, -apple-system, 'Segoe UI', sans-serif; }
+#thPick.open { display:block; }
+#thPick .nh { padding:6px 10px 8px; font-size:11px; letter-spacing:.08em; text-transform:uppercase; opacity:.6; }
+#thPick button { display:flex; align-items:center; gap:12px; width:100%; padding:9px 10px; border:0; border-radius:10px; background:none; color:inherit; font:inherit; text-align:left; cursor:pointer; }
+#thPick button:hover, #thPick button:focus-visible { background:rgba(255,255,255,.09); outline:none; }
+#thPick button.on { background:rgba(232,163,61,.18); box-shadow:inset 0 0 0 1px #e8a33d; }
+#thPick .sw { display:flex; flex:none; } #thPick .sw i { width:16px; height:16px; border-radius:50%; margin-left:-5px; box-shadow:0 0 0 2px #161618; } #thPick .sw i:first-child { margin-left:0; }
+#lvPick { position:fixed; z-index:40; display:none; min-width:250px; padding:8px; border-radius:14px; background:rgba(22,22,24,.96); color:#f3f1ec; box-shadow:0 12px 34px rgba(0,0,0,.45), 0 0 0 1px rgba(255,255,255,.1); font:500 14px/1.2 system-ui, -apple-system, 'Segoe UI', sans-serif; }
+#lvPick.open { display:block; }
+#lvPick .nh { padding:6px 10px 8px; font-size:11px; letter-spacing:.08em; text-transform:uppercase; opacity:.6; }
+#lvPick button { display:flex; align-items:center; gap:12px; width:100%; padding:9px 10px; border:0; border-radius:10px; background:none; color:inherit; font:inherit; text-align:left; cursor:pointer; }
+#lvPick button:hover, #lvPick button:focus-visible { background:rgba(255,255,255,.09); outline:none; }
+#lvPick button.on { background:rgba(232,163,61,.18); box-shadow:inset 0 0 0 1px #e8a33d; }
+#lvPick .sw { display:flex; flex:none; } #lvPick .sw i { width:16px; height:16px; border-radius:50%; margin-left:-5px; box-shadow:0 0 0 2px #161618; } #lvPick .sw i:first-child { margin-left:0; }
+#lvPick .du { margin-left:auto; padding-left:14px; opacity:.6; font-variant-numeric:tabular-nums; }
+#lgPick { position:fixed; z-index:40; display:none; min-width:250px; padding:8px; border-radius:14px; background:rgba(22,22,24,.96); color:#f3f1ec; box-shadow:0 12px 34px rgba(0,0,0,.45), 0 0 0 1px rgba(255,255,255,.1); font:500 14px/1.2 system-ui, -apple-system, 'Segoe UI', sans-serif; }
+#lgPick.open { display:block; }
+#lgPick .nh { padding:6px 10px 8px; font-size:11px; letter-spacing:.08em; text-transform:uppercase; opacity:.6; }
+#lgPick button { display:flex; align-items:center; gap:12px; width:100%; padding:9px 10px; border:0; border-radius:10px; background:none; color:inherit; font:inherit; text-align:left; cursor:pointer; }
+#lgPick button:hover, #lgPick button:focus-visible { background:rgba(255,255,255,.09); outline:none; }
+#lgPick button.on { background:rgba(232,163,61,.18); box-shadow:inset 0 0 0 1px #e8a33d; }
+#lgPick .sw { display:flex; flex:none; } #lgPick .sw i { width:16px; height:16px; border-radius:50%; margin-left:-5px; box-shadow:0 0 0 2px #161618; } #lgPick .sw i:first-child { margin-left:0; }
+#lgPick .du { margin-left:auto; padding-left:14px; opacity:.6; font-variant-numeric:tabular-nums; }
+.ib.lvb { width:auto; padding:0 11px; font:600 13px/1 system-ui, -apple-system, 'Segoe UI', sans-serif; letter-spacing:.02em; white-space:nowrap; }
+.ib { width:38px; height:38px; display:inline-grid; place-items:center; border:0; border-radius:9px; background:none; color:inherit; cursor:pointer; padding:0; font:inherit; }
+.ib:hover, .ib[aria-pressed="true"] { background:rgba(255,255,255,.14); }
+#pp[aria-pressed="true"] .pa, #pp[aria-pressed="false"] .pl { display:none }
+#snd[aria-pressed="true"] .x, #snd[aria-pressed="false"] .w { display:none }
+.ib svg { width:20px; height:20px; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
+#count .beats { display:block; font-size:9px; letter-spacing:2px; line-height:1; opacity:.8; margin-top:2px }
+#count { min-width:64px; text-align:center; font-variant-numeric:tabular-nums; font-size:14px; opacity:.85; }
+.sep { width:1px; height:22px; background:rgba(255,255,255,.18); margin:0 4px; }
+#notes { position:fixed; left:16px; right:16px; bottom:76px; z-index:25; display:none; max-height:40vh; overflow:auto; box-sizing:border-box; padding:18px 22px; border-radius:16px; background:rgba(18,18,20,.92); color:#f3f1ec; box-shadow:0 12px 40px rgba(0,0,0,.4); }
+#notes.open { display:grid; grid-template-columns:1fr 260px; gap:24px; }
+#notes .nh { font-size:12px; letter-spacing:.08em; text-transform:uppercase; opacity:.6; margin-bottom:6px; }
+#notes .nb { font-size:18px; line-height:1.5; white-space:pre-wrap; }
+#notes .side { border-left:1px solid rgba(255,255,255,.14); padding-left:20px; }
+#timer { font:600 28px/1 ui-monospace, monospace; font-variant-numeric:tabular-nums; margin-top:6px; }
+.toast { position:fixed; left:50%; top:20px; z-index:40; transform:translateX(-50%); padding:9px 16px; border-radius:10px; background:#f3f1ec; color:#111; font-size:13px; pointer-events:none; }
+:root { --side-w:260px }
+#side { position:fixed; left:0; top:0; bottom:0; z-index:28; width:var(--side-w); box-sizing:border-box; display:none; overflow-y:auto; padding:14px 12px 90px; background:#17181b; border-right:1px solid rgba(255,255,255,.08); color:#d9d8d3; }
+body.side-open #side { display:block; }
+body.side-open #app { left:var(--side-w); bottom:66px; }   /* with the panel open (preparing), the bar has its own strip: it never covers the slide */
+body.side-open #bar.hide { opacity:1; pointer-events:auto; }
+/* notes open: a pane under the slide (like PowerPoint's), beside the panel; the slide shrinks to sit above it */
+body.side-open #notes { left:calc(var(--side-w) + 16px); }
+body.notes-open #app { bottom:calc(var(--notes-h, 220px) + 82px); }
+body.notes-open #notes { max-height:var(--notes-h, 220px); bottom:76px; }
+body.notes-open #bar.hide { opacity:1; pointer-events:auto; }
+body.side-open #bar { left:calc(50% + var(--side-w) / 2); }
+#sideGrip { position:fixed; top:0; bottom:0; z-index:29; width:8px; margin-left:-4px; cursor:col-resize; display:none; left:var(--side-w); }
+body.side-open #sideGrip { display:block; } #sideGrip:hover, #sideGrip.on { background:rgba(232,163,61,.5); }
+.th { display:flex; gap:10px; align-items:flex-start; padding:6px 6px 6px 2px; margin-bottom:6px; border-radius:10px; cursor:pointer; }
+.th:hover { background:rgba(255,255,255,.06); }
+.th > .n { width:20px; flex:none; text-align:right; font-size:12px; font-variant-numeric:tabular-nums; opacity:.7; padding-top:2px; }
+.th > .dk-tbox { position:relative; flex:1; overflow:hidden; border-radius:6px; box-shadow:0 0 0 1px rgba(255,255,255,.14); background:var(--deck-outer, #111); }
+.th.on > .dk-tbox { box-shadow:0 0 0 3px #e8a33d; }
+.th.on > .n { opacity:1; color:#e8a33d; font-weight:600; }
+.th > .dk-tbox > .dk-frame { position:absolute; left:0; top:0; transform-origin:0 0; pointer-events:none; }
+#ready { position:fixed; left:16px; bottom:16px; z-index:27; display:none; align-items:center; gap:8px; padding:7px 10px 7px 7px; border-radius:999px; background:rgba(18,18,20,.55); color:#f3f1ec; transition:opacity .4s; pointer-events:none; }
+#ready.show { display:flex; } #ready.dim { opacity:0; }
+body.side-open #ready { left:calc(var(--side-w) + 16px); }
+#ready svg { width:22px; height:22px; flex:none; overflow:visible; }
+#ready .trk { fill:none; stroke:rgba(255,255,255,.18); stroke-width:3; }
+#ready .arc { fill:none; stroke:#f2b84b; stroke-width:3; stroke-linecap:round; transform:rotate(-90deg); transform-origin:11px 11px; }
+#ready .dot { fill:#f2b84b; }
+#ready.ready .dot { fill:#3ecf8e; } #ready.ready .arc { stroke:#3ecf8e; }
+#ready.done .dot { fill:none; stroke:#9b9a95; stroke-width:2.5; } #ready.done .arc, #ready.done .trk { stroke:transparent; }
+#ready.paused .dot { fill:#f2b84b; }
+#ready .lp { display:none; font-size:15px; line-height:1; }
+#ready.loop .lp { display:block; } #ready.loop svg { display:none; }
+#ready .dots { display:flex; gap:4px; }
+#ready .dots i { width:7px; height:7px; border-radius:50%; box-sizing:border-box; border:1.5px solid rgba(255,255,255,.7); display:block; }
+#ready .dots i.on { background:rgba(255,255,255,.9); border-color:transparent; }
+/* quiet scrollbars for the panel and notes, matching the dark chrome */
+#side, #notes { scrollbar-width:thin; scrollbar-color:rgba(255,255,255,.22) transparent; }
+#side::-webkit-scrollbar, #notes::-webkit-scrollbar { width:8px; }
+#side::-webkit-scrollbar-track, #notes::-webkit-scrollbar-track { background:transparent; }
+#side::-webkit-scrollbar-thumb, #notes::-webkit-scrollbar-thumb { background:rgba(255,255,255,.18); border-radius:8px; border:2px solid transparent; background-clip:padding-box; }
+#side::-webkit-scrollbar-thumb:hover, #notes::-webkit-scrollbar-thumb:hover { background:rgba(255,255,255,.34); background-clip:padding-box; }
+/* the terminal drawer: a real shell under the slide, served by the presenter kit (` opens it, Ctrl+` hides it) */
+/* panel themes for the terminal, browser panel and workbench (the ◐ button): Dark (default), Light, High contrast */
+:root { --ch-bar:#16191f; --ch-ed:#1e1e1e; --ch-term:#0d1015; --ch-edge:#2f3540; --ch-edge2:#3a414d; --ch-div:#4b5363; --ch-hover:#232830; --ch-sel:#2a3446;
+  --ch-ink:#f2f4f7; --ch-ink2:#d0d5dd; --ch-dim:#a3abb8; --ch-accent:#e8a33d; --ch-accent-soft:rgba(232,163,61,.45); --ch-ok:#3ecf8e; --ch-bad:#f26b6b; }
+body.ch-light { --ch-bar:#f1f3f6; --ch-ed:#ffffff; --ch-term:#ffffff; --ch-edge:#d3d8df; --ch-edge2:#c2c8d1; --ch-div:#98a1ae; --ch-hover:#e5e9ef; --ch-sel:#d6e4f7;
+  --ch-ink:#111418; --ch-ink2:#2c323b; --ch-dim:#545c68; --ch-accent:#b46b00; --ch-accent-soft:rgba(180,107,0,.35); --ch-ok:#1a7f37; --ch-bad:#c7323c; }
+body.ch-hc { --ch-bar:#000000; --ch-ed:#000000; --ch-term:#000000; --ch-edge:#8a8a8a; --ch-edge2:#a0a0a0; --ch-div:#ffffff; --ch-hover:#1c1c1c; --ch-sel:#00407f;
+  --ch-ink:#ffffff; --ch-ink2:#ffffff; --ch-dim:#e2e2e2; --ch-accent:#ffd23f; --ch-accent-soft:rgba(255,210,63,.5); --ch-ok:#2eeb8e; --ch-bad:#ff6464; }
+#term { position:fixed; left:0; right:0; bottom:0; z-index:35; height:var(--term-h, 48vh); display:flex; flex-direction:column; box-sizing:border-box;
+  background:var(--ch-term); color:var(--ch-ink); border-top:2px solid var(--ch-accent); box-shadow:0 -18px 50px rgba(0,0,0,.5); transform:translateY(104%); visibility:hidden;
+  transition:transform .28s cubic-bezier(.2,.8,.2,1), visibility 0s linear .28s, height .2s ease; font:13px/1.3 system-ui, sans-serif; }
+#term.open { transform:none; visibility:visible; transition:transform .28s cubic-bezier(.2,.8,.2,1), visibility 0s, height .2s ease; }
+#term.full { height:100vh; }
+/* the slide shrinks to sit above the open drawer (as it does for the notes pane), so all of it stays in view */
+body.term-open #app { bottom:var(--term-h, 48vh); }
+body.term-open #bar { display:none; }
+body.side-open #term { left:var(--side-w); }
+#term .tb { display:flex; align-items:center; gap:4px; padding:5px 8px; background:var(--ch-bar); border-bottom:1px solid var(--ch-edge); }
+#term .tabs { display:flex; align-items:center; gap:3px; min-width:0; overflow-x:auto; scrollbar-width:none; }
+#term .tabs::-webkit-scrollbar { display:none; }
+#term .tab { display:flex; align-items:center; gap:7px; max-width:220px; padding:5px 6px 5px 10px; border-radius:8px; color:var(--ch-ink2); cursor:pointer; white-space:nowrap; border:1px solid transparent; }
+#term .tab:hover { background:var(--ch-hover); color:var(--ch-ink); }
+#term .tab.on { background:var(--ch-term); color:var(--ch-ink); border-color:var(--ch-edge); }
+#term .tab .d { width:8px; height:8px; border-radius:50%; background:var(--ch-dim); flex:none; }
+#term .tab.live .d { background:var(--ch-ok); } #term .tab.dead .d { background:var(--ch-bad); }
+#term .tab .t { overflow:hidden; text-overflow:ellipsis; font-weight:500; }
+#term .tab .x { display:grid; place-items:center; width:18px; height:18px; border-radius:5px; color:var(--ch-dim); flex:none; }
+#term .tab .x:hover { background:var(--ch-edge2); color:var(--ch-ink); }
+#term .tb .sp { flex:1; min-width:8px; }
+#term .tb .ib2 { display:grid; place-items:center; width:30px; height:28px; padding:0; color:var(--ch-ink2); background:transparent; border:1px solid transparent; border-radius:7px; cursor:pointer; flex:none; }
+#term .tb .ib2:hover, #term .tb .ib2:focus-visible { color:var(--ch-ink); background:var(--ch-hover); border-color:var(--ch-accent); outline:none; }
+#term .tb .ib2 svg { width:18px; height:18px; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
+#term .tb .sepv { width:1px; height:18px; background:var(--ch-edge); margin:0 3px; flex:none; }
+#term.full .ib2[data-a="size"] .mx, #term:not(.full) .ib2[data-a="size"] .mn { display:none; }
+#term .scr { flex:1; min-height:0; padding:6px 4px 4px 12px; }
+#term .scr .xterm { height:100%; }
+#term .msg { margin:auto; max-width:560px; padding:24px; text-align:center; color:var(--ch-ink2); font-size:15px; line-height:1.5; }
+#term .msg b { color:var(--ch-ink); }
+@media (prefers-reduced-motion: reduce) { #term, #term.open { transition:none; } }
+body.term-ok [data-send] { cursor:pointer; }
+body.term-ok [data-send]:hover { outline:2px solid #e8a33d; outline-offset:4px; border-radius:6px; }
+/* hidden slides (like PowerPoint's Hide Slide): kept in the panel, dimmed, skipped while presenting */
+.th { position:relative; }
+.th .eye { position:absolute; right:8px; top:8px; z-index:2; display:none; place-items:center; width:26px; height:26px; padding:0; border-radius:7px; border:1px solid rgba(255,255,255,.18);
+  background:rgba(14,14,16,.85); color:#f3f1ec; cursor:pointer; }
+.th:hover .eye, .th .eye:focus-visible, .th.hid .eye { display:grid; }
+.th .eye:hover, .th .eye:focus-visible { border-color:#e8a33d; outline:none; }
+.th .eye svg { width:16px; height:16px; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
+.th .eye .off, .th.hid .eye .on { display:none; } .th.hid .eye .off { display:block; }
+.th.hid > .dk-tbox { opacity:.32; }
+.th.hid > .dk-tbox::after { content:"Hidden"; position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); z-index:3; padding:3px 10px; border-radius:6px; background:rgba(14,14,16,.88); color:#f3f1ec; font:600 12px system-ui, sans-serif; }
+.th.hid > .n { text-decoration:line-through; opacity:.5; }
+/* the browser (Deck.config({ browser: true })): pages open in the presenter's own browser, beside the deck */
+#webPick { position:fixed; z-index:40; display:none; width:min(520px, calc(100vw - 32px)); padding:12px; border-radius:14px; background:rgba(22,22,24,.97); color:#f3f1ec; box-shadow:0 18px 50px rgba(0,0,0,.5); box-sizing:border-box; }
+#webPick.open { display:block; }
+#webPick form { display:flex; gap:8px; }
+#webPick input { flex:1; min-width:0; font:14px/1.3 system-ui, sans-serif; color:#f3f1ec; background:#0f1012; border:1px solid #3a3d44; border-radius:9px; padding:9px 11px; }
+#webPick input:focus { outline:none; border-color:#e8a33d; }
+#webPick button { font:600 13px system-ui, sans-serif; color:#111; background:#e8a33d; border:0; border-radius:9px; padding:0 14px; cursor:pointer; }
+#webPick .row { display:flex; gap:8px; margin-top:10px; align-items:center; font-size:12px; color:#a9a7a1; }
+#webPick .row button { background:#2a2c31; color:#f3f1ec; padding:6px 10px; font-weight:500; }
+#webPick .row button:hover { background:#3a3d44; }
+/* the browser panel: local apps (localhost, *.local) shown under the slide, like the terminal drawer */
+#webp { position:fixed; left:0; right:0; bottom:0; z-index:35; height:var(--term-h, 48vh); display:flex; flex-direction:column; box-sizing:border-box;
+  background:var(--ch-bar); border-top:2px solid var(--ch-accent); box-shadow:0 -18px 50px rgba(0,0,0,.5); transform:translateY(104%); visibility:hidden;
+  transition:transform .28s cubic-bezier(.2,.8,.2,1), visibility 0s linear .28s, height .2s ease; font:13px/1.3 system-ui, sans-serif; }
+#webp.open { transform:none; visibility:visible; transition:transform .28s cubic-bezier(.2,.8,.2,1), visibility 0s, height .2s ease; }
+#webp.full { height:100vh; }
+body.side-open #webp { left:var(--side-w); }
+#webp .wb { display:flex; align-items:center; gap:6px; padding:6px 8px; background:var(--ch-bar); border-bottom:1px solid var(--ch-edge); }
+#webp .wb form { flex:1; min-width:0; display:flex; }
+#webp .wb input { flex:1; min-width:0; font:500 13px/1.2 ui-monospace, Consolas, monospace; color:var(--ch-ink); background:var(--ch-term); border:1px solid var(--ch-edge2); border-radius:999px; padding:6px 14px; }
+#webp .wb input:focus { outline:none; border-color:var(--ch-accent); }
+#webp .wb .ib2 { display:grid; place-items:center; width:30px; height:28px; padding:0; color:var(--ch-ink2); background:transparent; border:1px solid transparent; border-radius:7px; cursor:pointer; flex:none; }
+#webp .wb .ib2:hover, #webp .wb .ib2:focus-visible { color:var(--ch-ink); background:var(--ch-hover); border-color:var(--ch-accent); outline:none; }
+#webp .wb .ib2 svg { width:18px; height:18px; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
+#webp .wb .tx { font:600 12px system-ui, sans-serif; color:var(--ch-ink2); background:var(--ch-hover); border:1px solid var(--ch-edge2); border-radius:7px; padding:5px 10px; cursor:pointer; white-space:nowrap; }
+#webp .wb .tx:hover, #webp .wb .tx:focus-visible { color:var(--ch-ink); border-color:var(--ch-accent); outline:none; }
+#webp iframe { flex:1; min-height:0; width:100%; border:0; background:#fff; }
+@media (prefers-reduced-motion: reduce) { #webp, #webp.open { transition:none; } }
+body.render #webp { display:none !important; }
+/* the workbench (Deck.config({ workbench: true })): files | editor (Monaco) | terminal, under the slide like VS Code */
+#wb { position:fixed; left:0; right:0; bottom:0; z-index:35; height:var(--wb-h, 60vh); display:flex; flex-direction:column; box-sizing:border-box;
+  background:var(--ch-bar); color:var(--ch-ink2); border-top:2px solid var(--ch-accent); box-shadow:0 -18px 50px rgba(0,0,0,.5); transform:translateY(104%); visibility:hidden;
+  transition:transform .28s cubic-bezier(.2,.8,.2,1), visibility 0s linear .28s, height .2s ease; font:13px/1.35 system-ui, sans-serif; }
+#wb.open { transform:none; visibility:visible; transition:transform .28s cubic-bezier(.2,.8,.2,1), visibility 0s, height .2s ease; }
+#wb.full { height:100vh; }
+body.side-open #wb { left:var(--side-w); }
+body.wb-open #app { bottom:var(--wb-h, 60vh); }
+body.wb-open #bar { display:none; }
+#wb .wtop { display:flex; align-items:center; gap:6px; padding:5px 8px; background:var(--ch-bar); border-bottom:1px solid var(--ch-edge); }
+#wb .wtop .t { font-weight:600; color:var(--ch-ink); } #wb .wtop .wpath { font:12px ui-monospace, Consolas, monospace; color:var(--ch-dim); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; min-width:0; }
+#wb .sp { flex:1; }
+#wb .ib2 { display:grid; place-items:center; width:30px; height:28px; padding:0; color:var(--ch-ink2); background:transparent; border:1px solid transparent; border-radius:7px; cursor:pointer; flex:none; }
+#wb .ib2:hover, #wb .ib2:focus-visible { color:var(--ch-ink); background:var(--ch-hover); border-color:var(--ch-accent); outline:none; }
+#wb .ib2 svg { width:17px; height:17px; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
+#wb .tx { font:600 12px system-ui, sans-serif; color:var(--ch-ink2); background:var(--ch-hover); border:1px solid var(--ch-edge2); border-radius:7px; padding:5px 10px; cursor:pointer; white-space:nowrap; }
+#wb .tx:hover, #wb .tx:focus-visible { color:var(--ch-ink); border-color:var(--ch-accent); outline:none; }
+#wb .wmain { flex:1; min-height:0; display:grid; grid-template-columns:var(--wb-side, 230px) 1fr; }
+#wb .wside { min-height:0; display:flex; flex-direction:column; background:var(--ch-bar); border-right:1px solid var(--ch-edge); }
+#wb .whd { display:flex; align-items:center; padding:4px 4px 4px 12px; font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:var(--ch-dim); }
+#wb .whd .ib2 { width:24px; height:22px; } #wb .whd .ib2 svg { width:15px; height:15px; }
+#wb .wtree { flex:1; overflow:auto; padding-bottom:12px; scrollbar-width:thin; }
+#wb .r { position:relative; display:flex; align-items:center; gap:6px; height:24px; padding-right:8px; cursor:pointer; white-space:nowrap; color:var(--ch-ink2); }
+#wb .r:hover { background:var(--ch-hover); } #wb .r.on { background:var(--ch-sel); color:var(--ch-ink); }
+#wb .r .ic { width:14px; flex:none; text-align:center; color:var(--ch-dim); font-size:11px; }
+#wb .r .nm { overflow:hidden; text-overflow:ellipsis; } #wb .r .gs { margin-left:auto; font:700 11px ui-monospace, monospace; padding-left:6px; }
+#wb .r .gs.U, #wb .r .gs.A { color:var(--ch-ok); } #wb .r .gs.M { color:var(--ch-accent); } #wb .r .gs.D { color:var(--ch-bad); } #wb .r .gs.dot { color:var(--ch-accent); }
+#wb .r .ra { display:none; margin-left:auto; padding-left:8px; gap:2px; }   /* far right, away from the name you click */ #wb .r:hover .ra, #wb .r.hov .ra, #wb .r.on .ra, #wb .r.sel .ra { display:flex; } #wb .r:hover .gs, #wb .r.hov .gs, #wb .r.on .gs, #wb .r.sel .gs { display:none; }
+#wb .r.sel { background:var(--ch-sel); } #wb .wtree:focus { outline:none; } #wb .wtree:focus .r.sel, #wb .wtree:focus .r.on { box-shadow:inset 0 0 0 1px var(--ch-accent); }   /* .hov: the row under the pointer, kept across redraws */
+#wb .r .ra button { width:20px; height:20px; padding:0; display:grid; place-items:center; background:none; border:0; color:var(--ch-dim); cursor:pointer; border-radius:4px; }
+#wb .r .ra button:hover { color:var(--ch-ink); background:var(--ch-edge2); } #wb .r .ra svg { width:13px; height:13px; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
+#wb .wcenter { min-width:0; min-height:0; display:grid; grid-template-rows:auto 1fr var(--wb-term, 38%); }
+#wb .wtabs { display:flex; background:var(--ch-bar); border-bottom:1px solid var(--ch-edge); overflow-x:auto; scrollbar-width:none; min-height:33px; }
+#wb .wtab { display:flex; align-items:center; gap:7px; padding:7px 8px 7px 12px; border-right:1px solid var(--ch-edge); color:var(--ch-dim); cursor:pointer; white-space:nowrap; }
+#wb .wtab.on { background:var(--ch-ed); color:var(--ch-ink); box-shadow:inset 0 2px 0 var(--ch-accent); }
+#wb .wtab .dt { width:8px; height:8px; border-radius:50%; } #wb .wtab.dirty .dt { background:var(--ch-ink2); }
+#wb .wtab .x { width:18px; height:18px; display:grid; place-items:center; border-radius:4px; color:var(--ch-dim); } #wb .wtab .x:hover { background:var(--ch-edge2); color:var(--ch-ink); }
+#wb .wed { position:relative; min-height:0; background:var(--ch-ed); }
+#wb .wmsg { position:absolute; inset:0; display:grid; place-items:center; padding:24px; text-align:center; color:var(--ch-dim); font-size:14px; line-height:1.55; }
+#wb .wmsg b { color:var(--ch-ink); }
+#wb .wterm { position:relative; min-height:0; border-top:1px solid var(--ch-edge); background:var(--ch-term); }
+#wb .wterm .wmsg { font-size:13px; }
+#wb #term.inwb { position:absolute; inset:0; height:auto; transform:none; visibility:visible; box-shadow:none; border-top:0; z-index:auto; transition:none; }
+@media (prefers-reduced-motion: reduce) { #wb, #wb.open { transition:none; } }
+body.render #wb { display:none !important; }
+/* drag handles: the workbench's height (its top edge), the explorer's width, the editor / terminal split; remembered */
+#wb .wgrip { position:absolute; left:0; right:0; top:-5px; height:9px; cursor:row-resize; z-index:3; }
+#wb .wgrip:hover, #wb .wgrip.on { background:var(--ch-accent-soft); }
+#wb .wside { position:relative; } #wb .wsplit { position:absolute; top:0; bottom:0; right:-4px; width:8px; cursor:col-resize; z-index:3; }
+#wb .wsplit:hover, #wb .wsplit.on { background:var(--ch-accent-soft); }
+/* clear dividers between explorer, editor and terminal */
+#wb .wside { border-right:2px solid var(--ch-div); } #wb .wterm { border-top:2px solid var(--ch-div); } #wb .wtabs { border-bottom:1px solid var(--ch-div); }
+#wb .wtop, #term .tb, #webp .wb { border-bottom:1px solid var(--ch-div); }
+#wb .wterm .tgrip { position:absolute; left:0; right:0; top:-4px; height:8px; cursor:row-resize; z-index:3; }
+#wb .wterm .tgrip:hover, #wb .wterm .tgrip.on { background:var(--ch-accent-soft); }
+#wb .wmsg .tx { white-space:normal; max-width:100%; line-height:1.3; }
+body.wb-drag, body.wb-drag * { user-select:none !important; }
+/* the explorer can be hidden (more room for the editor) */
+#wb.noside .wmain { grid-template-columns:0 1fr; } #wb.noside .wside { display:none; }
+/* the terminal drawer and the browser panel: drag the top edge (remembered; double-click for the default) */
+#term > .dgrip, #webp > .dgrip { position:absolute; left:0; right:0; top:-5px; height:9px; cursor:row-resize; z-index:3; }
+#term > .dgrip:hover, #term > .dgrip.on, #webp > .dgrip:hover, #webp > .dgrip.on { background:var(--ch-accent-soft); }
+#term.inwb > .dgrip { display:none; }
+body.term-drag, body.term-drag * { user-select:none !important; }
+#wb .wdiff { position:absolute; inset:0; display:flex; flex-direction:column; background:var(--ch-ed); z-index:2; }
+#wb .wdiff .dh { display:flex; align-items:center; gap:8px; padding:6px 10px; background:var(--ch-bar); border-bottom:1px solid var(--ch-edge); color:var(--ch-ink2); }
+#wb .wdiff .dh b { color:var(--ch-ink); } #wb .wdiff .dh .sp { flex:1; } #wb .wdiff .dh .lr { font-size:12px; color:var(--ch-dim); }
+#wb .wdiff .db { flex:1; min-height:0; }
+#wb .tx.go { background:var(--ch-accent); color:#111; border-color:var(--ch-accent); }
+/* the demo setup: the presenter's repo, server and language, and a pre-flight check of the tools the demos need */
+#setup { position:fixed; inset:0; z-index:45; display:none; place-items:center; background:rgba(0,0,0,.55); font:14px/1.45 system-ui, sans-serif; color:#e6e9ef; }
+#setup.open { display:grid; }
+#setup .card { width:min(720px, calc(100vw - 32px)); max-height:calc(100vh - 32px); overflow:auto; box-sizing:border-box; padding:22px 24px; border-radius:16px; background:#16191f; box-shadow:0 24px 70px rgba(0,0,0,.6), 0 0 0 1px #2a2f38; }
+#setup h2 { margin:0 0 4px; font:700 20px system-ui, sans-serif; color:#fff; } #setup .sub { margin:0 0 16px; color:#9aa3b2; }
+#setup label { display:block; margin:12px 0 4px; font-weight:600; color:#fff; } #setup .hint { font-size:12px; color:#8b93a0; margin-top:3px; }
+#setup .row { display:flex; gap:8px; } #setup input[type=text] { flex:1; min-width:0; font:14px ui-monospace, Consolas, monospace; color:#fff; background:#0d1015; border:1px solid #333a45; border-radius:8px; padding:8px 10px; }
+#setup input:focus { outline:none; border-color:#e8a33d; }
+#setup .langs { display:flex; flex-wrap:wrap; gap:6px; } #setup .langs button { font:600 13px system-ui, sans-serif; color:#c9ced8; background:#20242c; border:1px solid #333a45; border-radius:999px; padding:6px 14px; cursor:pointer; }
+#setup .langs button.on { background:#e8a33d; color:#111; border-color:#e8a33d; }
+#setup button.b { font:600 13px system-ui, sans-serif; color:#c9ced8; background:#20242c; border:1px solid #333a45; border-radius:8px; padding:7px 12px; cursor:pointer; white-space:nowrap; }
+#setup button.b:hover, #setup button.b:focus-visible { color:#fff; border-color:#e8a33d; outline:none; } #setup button.b.go { background:#e8a33d; color:#111; border-color:#e8a33d; }
+#setup .checks { margin-top:8px; border:1px solid #2a2f38; border-radius:10px; }
+#setup .ck { display:grid; grid-template-columns:18px 130px 1fr; gap:10px; align-items:start; padding:8px 12px; border-top:1px solid #23272e; } #setup .ck:first-child { border-top:0; }
+#setup .ck i { width:12px; height:12px; border-radius:50%; margin-top:4px; background:#555b66; } #setup .ck.ok i { background:#3ecf8e; } #setup .ck.bad i { background:#f26b6b; } #setup .ck.wait i { background:#e8a33d; }
+#setup .ck b { color:#fff; font-weight:600; } #setup .ck span { color:#9aa3b2; font-size:12.5px; white-space:pre-wrap; word-break:break-word; }
+#setup .foot { display:flex; gap:8px; justify-content:flex-end; margin-top:18px; }
+body.render #setup { display:none !important; }
+
+body.web-on [data-open] { cursor:pointer; }
+body.web-on [data-open]:hover { outline:2px solid #e8a33d; outline-offset:4px; border-radius:6px; }
+#print { display:none; }
+@media print {
+  @page { size:16in 9in; margin:0; }
+  html, body { height:auto; overflow:visible; background:#fff; }
+  body > *:not(#print) { display:none !important; }
+  #print { display:block; }
+  .pslide { position:relative; width:16in; height:9in; overflow:hidden; page-break-after:always; break-after:page; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  .pslide > .dk-frame { position:absolute; left:0; top:0; transform-origin:0 0; }
+}
+body.render { background:transparent; }
+body.render #bar, body.render #notes, body.render #side, body.render #ready, body.render #term { display:none !important; }
+@media (max-width:640px) { #notes.open { grid-template-columns:1fr; } #notes .side { border-left:0; padding-left:0; } }
+</style>
+</head>
+<body>
+<div id="app"><div id="frame"><div id="stage"><div id="bg"></div><div id="world"><svg class="dk-links" width="1" height="1"></svg></div></div></div></div>
+<aside id="side" aria-label="Slides"></aside><div id="sideGrip" role="separator" aria-orientation="vertical" aria-label="Resize the slides panel" title="Drag to resize"></div>
+<div id="ready" aria-hidden="true"><svg viewBox="0 0 22 22"><circle class="trk" cx="11" cy="11" r="9"/><circle class="arc" cx="11" cy="11" r="9" stroke-dasharray="56.55" stroke-dashoffset="56.55"/><circle class="dot" cx="11" cy="11" r="4.5"/></svg><span class="lp">⟳</span><span class="dots"></span></div>
+<div id="print"></div>
+<div id="webp" role="dialog" aria-label="Browser panel"><div class="wb"><button type="button" class="ib2" data-a="chrome" title="Panel theme: Dark, Light or High contrast" aria-label="Panel theme"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 0 1 0 16Z" fill="currentColor"/></svg></button><button type="button" class="ib2" data-a="panel" title="Show or hide the slides panel" aria-label="Show or hide the slides panel"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/></svg></button><button type="button" class="ib2" data-a="back" title="Back" aria-label="Back"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button><button type="button" class="ib2" data-a="reload" title="Reload the address in the bar" aria-label="Reload the address in the bar"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12a8 8 0 1 0 2.3-5.6"/><path d="M4 4v4h4"/></svg></button><form novalidate><input type="text" inputmode="url" aria-label="Address" spellcheck="false" autocomplete="off"></form><button type="button" class="tx" data-a="beside" title="Open this page in your own browser, beside the deck">Open beside ↗</button><button type="button" class="ib2" data-a="size" title="Full height / half height" aria-label="Full height / half height"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button><button type="button" class="ib2" data-a="hide" title="Hide (B)" aria-label="Hide (B)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button></div><iframe title="Browser panel" referrerpolicy="no-referrer"></iframe></div>
+<div id="wb" role="dialog" aria-label="Workbench"><div class="wgrip" title="Drag to resize" role="separator" aria-orientation="horizontal"></div><div class="wtop"><button type="button" class="ib2" data-a="chrome" title="Panel theme: Dark, Light or High contrast" aria-label="Panel theme"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 0 1 0 16Z" fill="currentColor"/></svg></button><button type="button" class="ib2" data-a="panel" title="Show or hide the slides panel" aria-label="Show or hide the slides panel"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/></svg></button><button type="button" class="ib2" data-a="explorer" title="Show or hide the explorer" aria-label="Show or hide the explorer"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M8 4v16"/><path d="M12.5 9l3 3-3 3"/></svg></button><span class="t">Workbench</span><span class="wpath"></span><span class="sp"></span><button type="button" class="tx" data-a="stage" title="Put the demo folder back to what this slide expects (asks first)" style="display:none">Reset to this slide</button><button type="button" class="tx" data-a="code" title="Open this folder in your own VS Code">Open in VS Code</button><button type="button" class="ib2" data-a="setup" title="Demo setup: repo, server, language, checks" aria-label="Demo setup" style="display:none"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button><button type="button" class="ib2" data-a="size" title="Full height / part height" aria-label="Full height / part height"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button><button type="button" class="ib2" data-a="hide" title="Hide (E)" aria-label="Hide (E)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button></div><div class="wmain"><div class="wside"><div class="whd"><span style="flex:1">Explorer</span><button type="button" class="ib2" data-a="newfile" title="New file" aria-label="New file"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6M12 12v6M9 15h6"/></svg></button><button type="button" class="ib2" data-a="newdir" title="New folder" aria-label="New folder"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M12 10v6M9 13h6"/></svg></button><button type="button" class="ib2" data-a="refresh" title="Refresh" aria-label="Refresh"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12a8 8 0 1 0 2.3-5.6"/><path d="M4 4v4h4"/></svg></button></div><div class="wsplit" title="Drag to resize" role="separator" aria-orientation="vertical"></div><div class="wtree" role="tree" tabindex="0" aria-label="Files (F2 renames, Delete deletes)"></div></div><div class="wcenter"><div class="wtabs" role="tablist"></div><div class="wed"></div><div class="wterm"><div class="tgrip" title="Drag to resize" role="separator" aria-orientation="horizontal"></div></div></div></div></div>
+<div id="setup" role="dialog" aria-modal="true" aria-label="Demo setup"><div class="card"></div></div>
+<div id="webPick" role="dialog" aria-label="Open a page"><form novalidate><input id="webUrl" type="text" inputmode="url" placeholder="https://… or localhost:5000" aria-label="Address" autocomplete="off" spellcheck="false"><button type="submit">Open</button></form>
+  <div class="row"><span id="webNote" style="flex:1"></span><button type="button" id="webFull">Deck full screen</button></div></div>
+<div id="term" role="dialog" aria-label="Terminal"><div class="tb"><button type="button" class="ib2" data-a="chrome" title="Panel theme: Dark, Light or High contrast" aria-label="Panel theme"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 0 1 0 16Z" fill="currentColor"/></svg></button><button type="button" class="ib2" data-a="panel" title="Show or hide the slides panel" aria-label="Show or hide the slides panel"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/></svg></button><div class="tabs" role="tablist" aria-label="Terminals"></div><button type="button" class="ib2" data-a="new" title="New terminal (Ctrl+Shift+T)" aria-label="New terminal (Ctrl+Shift+T)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button><span class="sp"></span><button type="button" class="ib2" data-a="smaller" title="Smaller text" aria-label="Smaller text"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 19l5-13 5 13M4.8 14.5h6.4"/><path d="M15 12h6"/></svg></button><button type="button" class="ib2" data-a="bigger" title="Larger text" aria-label="Larger text"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 19l5-13 5 13M4.8 14.5h6.4"/><path d="M15 12h6M18 9v6"/></svg></button><span class="sepv"></span><button type="button" class="ib2" data-a="size" title="Full height / half height" aria-label="Full height / half height"><svg viewBox="0 0 24 24" aria-hidden="true"><g class="mx"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></g><g class="mn"><path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5"/></g></svg></button><button type="button" class="ib2" data-a="restart" title="Restart this shell" aria-label="Restart this shell"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12a8 8 0 1 0 2.3-5.6"/><path d="M4 4v4h4"/></svg></button><button type="button" class="ib2" data-a="hide" title="Hide (Ctrl+`)" aria-label="Hide (Ctrl+`)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button></div><div class="scr"></div></div>
+<div id="notes" aria-live="polite"><div><div class="nh">Notes</div><div class="nb" id="noteText"></div></div><div class="side"><div class="nh">Next</div><div class="nb" id="nextText"></div><div class="nh" style="margin-top:14px">Animation</div><div class="nb" id="animText">—</div><div class="nh" style="margin-top:14px">Time</div><div id="timer">0:00</div></div></div>
+<div id="bar" role="toolbar" aria-label="Presentation controls">
+  <button class="ib" id="sb" aria-label="Slides panel (T)" aria-pressed="false" title="Slides panel (T)"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/></svg></button>
+  <div class="sep"></div>
+  <button class="ib" id="prev" aria-label="Previous (←)" title="Previous (←)"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button>
+  <div id="count">1 / 1</div>
+  <button class="ib" id="next" aria-label="Next (→)" title="Next (→, Space)"><svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>
+  <div class="sep"></div>
+  <button class="ib" id="ov" aria-label="Overview (O)" aria-pressed="false" title="Overview (O)"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg></button>
+  <button class="ib" id="pp" aria-label="Pause animation (K)" aria-pressed="false" title="Pause or play the animation (K)" style="display:none"><svg viewBox="0 0 24 24"><path class="pa" d="M8 5v14M16 5v14"/><path class="pl" d="M7 4.5v15l12-7.5z"/></svg></button>
+  <button class="ib" id="rp" aria-label="Replay animation (R)" title="Replay the animation (R)" style="display:none"><svg viewBox="0 0 24 24"><path d="M4 12a8 8 0 1 0 2.3-5.6"/><path d="M4 4v4h4"/></svg></button>
+  <button class="ib" id="snd" aria-label="Video sound (S)" aria-pressed="false" title="Video sound (S)" style="display:none"><svg viewBox="0 0 24 24"><path d="M4 9h4l5-4v14l-5-4H4z"/><path class="w" d="M16.5 9a4 4 0 0 1 0 6M19 6.5a8 8 0 0 1 0 11"/><path class="x" d="M17 9.5l5 5M22 9.5l-5 5"/></svg></button>
+  <button class="ib" id="nt" aria-label="Notes (N)" aria-pressed="false" title="Notes, next step and timer (N)"><svg viewBox="0 0 24 24"><path d="M6 3h9l4 4v14H6z"/><path d="M9 11h7M9 15h7"/></svg></button>
+  <button class="ib" id="dl" aria-label="Download this deck" title="Download this deck (one HTML file that presents offline)"><svg viewBox="0 0 24 24"><path d="M12 4v11"/><path d="M7 10l5 5 5-5"/><path d="M5 20h14"/></svg></button>
+  <button class="ib" id="pr" aria-label="Print or save as PDF" title="Print, or save as PDF (one slide per page)"><svg viewBox="0 0 24 24"><path d="M7 9V3h10v6"/><rect x="3" y="9" width="18" height="8" rx="2"/><path d="M7 14h10v7H7z"/></svg></button>
+  <button class="ib lvb" id="lvl" aria-label="Audience level (L)" title="Audience level (L)" style="display:none">Level</button>
+  <button class="ib lvb" id="lng" aria-label="Code language (G)" title="Language of the code samples (G)" style="display:none">Language</button>
+  <button class="ib" id="thm" aria-label="Theme (C)" title="Theme (C)" style="display:none"><svg viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 0 18c1.1 0 1.6-.8 1.6-1.6 0-.5-.2-.9-.5-1.2-.3-.3-.5-.7-.5-1.2 0-.9.7-1.6 1.6-1.6H16a5 5 0 0 0 5-5c0-4-4-7.4-9-7.4z"/><circle cx="7.5" cy="11" r="1.2"/><circle cx="10.5" cy="7" r="1.2"/><circle cx="15.5" cy="7.5" r="1.2"/></svg></button>
+  <button class="ib" id="wbb" aria-label="Workbench (E)" title="Workbench (E): files, editor and terminal" style="display:none"><svg viewBox="0 0 24 24"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6"/><path d="M10 13l-2 2 2 2M14 13l2 2-2 2"/></svg></button>
+  <button class="ib" id="web" aria-label="Browser (B)" title="Browser (B): open a page beside the deck" style="display:none"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3c2.6 2.6 3.9 5.6 3.9 9s-1.3 6.4-3.9 9c-2.6-2.6-3.9-5.6-3.9-9s1.3-6.4 3.9-9z"/></svg></button>
+  <button class="ib" id="tmb" aria-label="Terminal (`)" aria-pressed="false" title="Terminal (`; Ctrl+` hides it, Ctrl+Shift+T opens another)" style="display:none"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 9l3 3-3 3"/><path d="M12 15h5"/></svg></button>
+  <button class="ib" id="full" aria-label="Full screen (F)" title="Full screen (F)"><svg viewBox="0 0 24 24"><path d="M4 9V4h5"/><path d="M20 9V4h-5"/><path d="M4 15v5h5"/><path d="M20 15v5h-5"/></svg></button>
+</div>
+<script>
+/* ---------- Motion runtime: kit helpers ---------- */
+(function () {
+  'use strict';
+  const clamp = (x, a, b) => x < a ? a : x > b ? b : x;
+  const clamp01 = x => clamp(x, 0, 1);
+  const seg = (t, a, b) => b === a ? (t >= b ? 1 : 0) : clamp01((t - a) / (b - a));
+  const lerp = (a, b, p) => a + (b - a) * p;
+  const eo = x => 1 - Math.pow(1 - clamp01(x), 3);
+  const ei = x => Math.pow(clamp01(x), 3);
+  const eio = x => { x = clamp01(x); return x < .5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2; };
+  const eoq = x => 1 - Math.pow(1 - clamp01(x), 2);
+  const eox = x => { x = clamp01(x); return x === 1 ? 1 : 1 - Math.pow(2, -10 * x); };
+  const eob = (x, s = 1.4) => { x = clamp01(x); const c3 = s + 1; return 1 + c3 * Math.pow(x - 1, 3) + s * Math.pow(x - 1, 2); };
+  const spring = (x, k = 7, d = 5.5) => { x = clamp01(x); return x === 1 ? 1 : 1 - Math.exp(-d * x) * Math.cos(k * x * Math.PI / 1.5); };
+  const smoothstep = (a, b, x) => { const p = seg(x, a, b); return p * p * (3 - 2 * p); };
+  const step = (t, a) => t >= a ? 1 : 0;
+  const pulse = (t, a, b) => t >= a && t < b ? 1 : 0;
+  function rng(seed = 1) { let s = (seed >>> 0) || 1; return () => { s ^= s << 13; s >>>= 0; s ^= s >>> 17; s ^= s << 5; s >>>= 0; return s / 4294967296; }; }
+  function vnoise(seed = 1) {
+    const r = rng(seed), v = []; for (let i = 0; i < 256; i++) v.push(r() * 2 - 1);
+    return x => { const i = Math.floor(x), f = x - i, a = v[i & 255], b = v[(i + 1) & 255], u = f * f * (3 - 2 * f); return a + (b - a) * u; };
+  }
+  const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  function h(html) { const tp = document.createElement('template'); tp.innerHTML = String(html).trim(); return tp.content.firstElementChild; }
+  function svg(markup) { const tp = document.createElement('template'); tp.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg">' + markup + '</svg>'; return tp.content.firstElementChild.firstElementChild; }
+  function el(tag, o = {}, kids = []) {
+    const n = document.createElement(tag);
+    if (o.class) n.className = o.class; if (o.style) n.style.cssText = o.style;
+    if (o.text != null) n.textContent = o.text; if (o.html != null) n.innerHTML = o.html;
+    if (o.attrs) for (const k in o.attrs) n.setAttribute(k, o.attrs[k]);
+    for (const c of kids) n.append(c); return n;
+  }
+  // Lines drawn on: works for any SVG geometry element.
+  function draw(node, p) { node.setAttribute('pathLength', '1'); node.style.strokeDasharray = '1 1'; node.style.strokeDashoffset = String(1 - clamp01(p)); }
+  function sample(node, n = 200) { const L = node.getTotalLength(), pts = []; for (let i = 0; i <= n; i++) { const q = node.getPointAtLength(L * i / n); pts.push([q.x, q.y]); } return pts; }
+  function along(pts, p) { p = clamp01(p); const f = p * (pts.length - 1), i = Math.min(pts.length - 2, Math.floor(f)), k = f - i, a = pts[i], b = pts[i + 1]; return [a[0] + (b[0] - a[0]) * k, a[1] + (b[1] - a[1]) * k]; }
+  const breathe = (t, amt = .012, period = 3.2) => 1 + amt * Math.sin(2 * Math.PI * t / period);
+  function typist(text, t0, cps = 22, seed = 7) {
+    const r = rng(seed), times = []; let tt = t0;
+    for (let i = 0; i < text.length; i++) { times.push(tt); tt += (1 / cps) * (0.6 + 0.8 * r()) + (text[i] === ' ' ? 0.03 : 0); }
+    const count = t => { let n = 0; while (n < times.length && times[n] <= t) n++; return n; };
+    return { times, end: times.length ? times[times.length - 1] : t0, count, at: t => text.slice(0, count(t)) };
+  }
+  // Word-by-word type entrances. The element keeps ONE string; spans are made at run time.
+  function words(node) {
+    if (node.__mw) return node.__mw;
+    const txt = node.textContent; node.textContent = '';
+    const parts = txt.split(/(\s+)/), spans = [];
+    for (const p of parts) { if (!p) continue; if (/^\s+$/.test(p)) { node.append(document.createTextNode(p)); continue; }
+      const s = document.createElement('span'); s.textContent = p; s.style.display = 'inline-block'; node.append(s); spans.push(s); }
+    return (node.__mw = spans);
+  }
+  const TextFx = {
+    fadeFromRight(node, t, t0, o = {}) { const { stagger = .11, dur = .5, dx = 26 } = o, w = words(node);
+      w.forEach((s, i) => { const p = eo(seg(t, t0 + i * stagger, t0 + i * stagger + dur)); s.style.opacity = p; s.style.transform = 'translateX(' + ((1 - p) * dx).toFixed(2) + 'px)'; });
+      return t0 + (w.length - 1) * stagger + dur; },
+    riseIn(node, t, t0, o = {}) { const { stagger = .09, dur = .55, dy = 34 } = o, w = words(node);
+      w.forEach((s, i) => { const p = eo(seg(t, t0 + i * stagger, t0 + i * stagger + dur)); s.style.opacity = p; s.style.transform = 'translateY(' + ((1 - p) * dy).toFixed(2) + 'px)'; });
+      return t0 + (w.length - 1) * stagger + dur; },
+    fadeOutLeft(node, t, t0, o = {}) { const { stagger = .06, dur = .3, dx = 22 } = o, w = words(node);
+      w.forEach((s, i) => { const p = ei(seg(t, t0 + i * stagger, t0 + i * stagger + dur)); if (p > 0) { s.style.opacity = 1 - p; s.style.transform = 'translateX(' + (-p * dx).toFixed(2) + 'px)'; } });
+      return t0 + (w.length - 1) * stagger + dur; },
+    countUp(node, t, t0, t1, from, to, fmt = v => Math.round(v).toLocaleString('en-US')) { node.textContent = fmt(lerp(from, to, eo(seg(t, t0, t1)))); },
+  };
+  // Camera: keys [{t, x, y, z}] in scene px; eases between keys, zoom in log space; optional drift [dx/s, dy/s].
+  function camera(layer, keys, W, H) {
+    layer.style.transformOrigin = '0 0';
+    const at = t => {
+      if (t <= keys[0].t) return keys[0];
+      for (let i = 1; i < keys.length; i++) { const a = keys[i - 1], b = keys[i];
+        if (t <= b.t) { const start = b.from != null ? b.from : a.t + (a.hold || 0);
+          if (b.cut) return t < b.t ? hold(a, t) : b;
+          const p = (b.ease || eio)(seg(t, start, b.t)), A = hold(a, Math.min(t, start));
+          return { x: lerp(A.x, b.x, p), y: lerp(A.y, b.y, p), z: Math.exp(lerp(Math.log(A.z), Math.log(b.z), p)) }; } }
+      return hold(keys[keys.length - 1], t);
+    };
+    function hold(k, t) { const d = k.drift || [0, 0, 0], dt = Math.max(0, t - k.t); return { x: k.x + d[0] * dt, y: k.y + d[1] * dt, z: k.z * Math.exp((d[2] || 0) * dt) }; }
+    return { at, apply(t) { const c = at(t); layer.style.transform = 'translate(' + (W / 2 - c.x * c.z).toFixed(2) + 'px,' + (H / 2 - c.y * c.z).toFixed(2) + 'px) scale(' + c.z.toFixed(4) + ')'; return c; } };
+  }
+  function cutPaper(seed = 1, n = 7, irr = .28) { const r = rng(seed), pts = []; for (let i = 0; i < n; i++) { const a = (i + (r() - .5) * .5) / n * Math.PI * 2, rr = 1 - irr / 2 + r() * irr; pts.push([Math.cos(a) * rr, Math.sin(a) * rr]); } return pts; }
+  const polyStr = (pts, cx = 0, cy = 0, sx = 1, sy = sx, rot = 0) => { const c = Math.cos(rot), s = Math.sin(rot); return pts.map(([x, y]) => (cx + (x * c - y * s) * sx).toFixed(1) + ',' + (cy + (x * s + y * c) * sy).toFixed(1)).join(' '); };
+
+  window.kit = { clamp, clamp01, seg, lerp, eo, ei, eio, eoq, eox, eob, spring, smoothstep, step, pulse, rng, vnoise, esc, h, svg, el,
+    draw, sample, along, breathe, typist, TextFx, words, camera, cutPaper, polyStr, W: 1920, H: 1080 };
+})();
+
+// ---------- 3D: kit.three (three.js, embedded by build.py when the script uses kit.three) ----------
+// One WebGL renderer serves the whole page (browsers keep only ~16 WebGL contexts alive); each view
+// owns a plain 2D canvas that render() copies the picture into, so copies of the page keep it too.
+(function () {
+  let GL = null;
+  window.kit.three = function (host, o = {}) {
+    const T = window.THREE;
+    if (!T) throw new Error('kit.three: three.js is not in this page; rebuild it with scripts/build.py');
+    const w = o.w || (this !== window.kit && this.W) || 1600, h = o.h || (this !== window.kit && this.H) || 900, sc = o.scale || 1.5;
+    const cv = document.createElement('canvas'); cv.className = 'k3d'; cv.width = Math.round(w * sc); cv.height = Math.round(h * sc);
+    cv.style.cssText = 'position:absolute;left:' + (o.x || 0) + 'px;top:' + (o.y || 0) + 'px;width:' + w + 'px;height:' + h + 'px;pointer-events:none';
+    host.append(cv); const cx = cv.getContext('2d');   // stacks in page order: what is added after it draws on top
+    if (GL === null) { try { GL = new T.WebGLRenderer({ alpha: true, antialias: true }); GL.setPixelRatio(1); GL.setClearColor(0x000000, 0); } catch (e) { GL = false; console.error('[kit.three] no WebGL', e); } }
+    const scene = new T.Scene(), camera = new T.PerspectiveCamera(o.fov || 35, w / h, 0.1, 2000);
+    camera.position.set(0, 0, o.dist || 10);
+    if (o.target) camera.lookAt(o.target[0], o.target[1], o.target[2]);
+    if (o.lights === 'sun') { const s = new T.PointLight(0xffffff, 3, 0, 0); s.position.set(0, 0, 0); scene.add(s, new T.AmbientLight(0xffffff, .25)); }   // light from a Sun at the origin, no falloff
+    else if (o.lights !== false) { scene.add(new T.HemisphereLight(0xffffff, 0x445566, 1.4)); const d = new T.DirectionalLight(0xffffff, 2.4); d.position.set(4, 6, 5); scene.add(d); }
+    function render() {
+      if (!GL) { cx.clearRect(0, 0, cv.width, cv.height); cx.fillStyle = '#e66'; cx.font = 28 * sc + 'px system-ui, sans-serif'; cx.fillText('3D is unavailable in this browser (no WebGL).', 24 * sc, 56 * sc);
+        cv.dataset.failed = '1'; return; }
+      if (GL.domElement.width !== cv.width || GL.domElement.height !== cv.height) GL.setSize(cv.width, cv.height, false);
+      GL.render(scene, camera); cx.clearRect(0, 0, cv.width, cv.height); cx.drawImage(GL.domElement, 0, 0);
+    }
+    // a 3D point -> [x, y] in stage pixels (for HTML labels pinned to 3D objects); uses the camera as it is now
+    function project(p) { camera.updateMatrixWorld(); const v = (p.isVector3 ? p.clone() : new T.Vector3(p[0], p[1], p[2])).project(camera);
+      return [(o.x || 0) + (v.x + 1) / 2 * w, (o.y || 0) + (1 - v.y) / 2 * h]; }
+    return { THREE: T, scene, camera, renderer: GL || null, canvas: cv, render, project };
+  };
+  // a palette colour for materials: k.cssVar('--accent') follows palette and tweak changes
+  window.kit.lv = v => window.Deck ? window.Deck.lv(v) : v;   // a value per audience level (see Deck.levels)
+  window.kit.cssVar = function (name) { const el = (this && this.stage) || document.getElementById('stage') || document.documentElement;
+    return getComputedStyle(el).getPropertyValue(name).trim(); };
+  // paint every canvas of `from` into the same-place canvas of its copy `to` (cloneNode copies no pixels)
+  window.kit.copyCanvases = function (from, to) {
+    const a = from.querySelectorAll('canvas'), b = to.querySelectorAll('canvas');
+    a.forEach((c, i) => { const d = b[i]; if (!d || !c.width || !c.height) return; d.width = c.width; d.height = c.height; try { d.getContext('2d').drawImage(c, 0, 0); } catch (e) {} });
+  };
+})();
+</script>
+<script>
+/* ---------- Deck runtime: model ---------- */
+window.Deck = {
+  cfg: { title: 'Deck', width: 1920, height: 1080, background: '#111318', fonts: {}, style: 'slides', overview: null, returnToOverview: null, reveal: true, grid: null, linkWidth: 12, camera: 'calm', panel: true },
+  frames: [], byId: {}, themeList: [], levelList: [], level: null, langList: [], lang: null, allIds: [], skipped: [], cssText: [], layouts: [], pathList: null, decos: [], links: [], creditList: [], _images: [], _ytThumbs: {},
+  config(o) { Object.assign(this.cfg, o); return this; },
+  // the presenter's demo setup (Deck.config({ demo: … })): their answers, read from the launcher before the slides are built,
+  // so a slide can say Deck.d('repo', 'your-org/orders-api'). Opened as a plain file (or in --verify) every value is its fallback.
+  demo: (() => { try { const tk = new URLSearchParams(location.search).get('tk'); if (!tk || !/^https?:$/.test(location.protocol)) return {};
+    const x = new XMLHttpRequest(); x.open('GET', '/__demo/config?tk=' + encodeURIComponent(tk), false); x.send();
+    return x.status === 200 ? (JSON.parse(x.responseText || '{}') || {}) : {}; } catch (e) { return {}; } })(),
+  d(key, fallback) { const v = this.demo && this.demo[key]; return v != null && v !== '' ? v : fallback; },
+  css(text) { this.cssText.push(text); return this; },
+  // audience levels: [{id: 'beginner', name: 'Beginner', duration: '3 h'}, ...]. One deck holds every level; the viewer
+  // switches with the bar's level button (or L). Call after Deck.config and before the frames.
+  levels(list) {
+    this.levelList = Array.isArray(list) ? list : []; const ids = this.levelList.map(l => l.id); let want = null;
+    try { want = new URLSearchParams(location.search).get('level'); } catch (e) {}
+    if (!ids.includes(want)) try { want = localStorage.getItem('deck.level:' + (this.cfg.title || '')); } catch (e) {}
+    this.level = ids.includes(want) ? want : ids.includes(this.cfg.level) ? this.cfg.level : ids[0] || null;
+    if (window.kit) window.kit.level = this.level;
+    return this;
+  },
+  // sample-code languages: [{id: 'python', name: 'Python'}, ...]. One deck, every code sample in each language; the presenter
+  // picks the room's language with the bar's language button (or G). Same rules as levels; ids must differ from the level ids.
+  langs(list) {
+    this.langList = Array.isArray(list) ? list : []; const ids = this.langList.map(l => l.id); let want = null;
+    try { want = new URLSearchParams(location.search).get('lang'); } catch (e) {}
+    if (!ids.includes(want)) try { want = localStorage.getItem('deck.lang:' + (this.cfg.title || '')); } catch (e) {}
+    if (!ids.includes(want)) want = this.demo && this.demo.lang;   // the language chosen in the demo setup
+    this.lang = ids.includes(want) ? want : ids.includes(this.cfg.lang) ? this.cfg.lang : ids[0] || null;
+    if (window.kit) window.kit.lang = this.lang;
+    return this;
+  },
+  // a value per level {beginner: ..., default: ...} or per language {python: ..., java: ..., default: ...}, resolved for the current
+  // level and language (nest them either way: {beginner: {python: ...}}); anything else as it is
+  lv(v) {
+    if (!v || typeof v !== 'object' || Array.isArray(v) || (window.Node && v instanceof Node)) return v;
+    const ks = Object.keys(v); if (!ks.length) return v;
+    if (this.levelList.length && ks.every(k => k === 'default' || this.levelList.some(l => l.id === k))) return this.lv(v[this.level] !== undefined ? v[this.level] : v.default);
+    if (this.langList.length && ks.every(k => k === 'default' || this.langList.some(l => l.id === k))) return this.lv(v[this.lang] !== undefined ? v[this.lang] : v.default);
+    return v;
+  },
+  frame(id, def) {
+    if (!/^[a-z][a-z0-9-]{0,40}$/.test(id)) throw new Error('Bad frame id: ' + id);
+    this.allIds.push(id);
+    if (def && def.levels && this.levelList.length && !def.levels.includes(this.level)) { this.skipped.push(id); return this; }   // not in this level
+    if (def && def.langs && this.langList.length && !def.langs.includes(this.lang)) { this.skipped.push(id); return this; }   // not for this language
+    if (this.byId[id]) throw new Error('Duplicate frame id: ' + id);
+    if (def && (this.levelList.length || this.langList.length)) { def = Object.assign({}, def); for (const k of Object.keys(def)) def[k] = this.lv(def[k]);
+      if (Array.isArray(def.points)) def.points = def.points.map(q => this.lv(q)).filter(q => q != null && q !== ''); }
+    const f = Object.assign({ id, title: '', kick: '', sub: '', points: [], html: '', notes: '', shape: 'rect', w: 1600, h: 900, rotate: 0, parent: null, reveal: null, cls: '', anim: null, video: null, youtube: null, interactive: null, credit: null }, def);
+    if (typeof f.youtube === 'string') f.youtube = { id: f.youtube };
+    if (typeof f.video === 'string') f.video = { src: f.video };
+    if (f.clip) f.anim = clipAnim(f.clip);
+    if (f.anim && f.anim.stops) f.anim = stopsAnim(f.anim);
+    f.fixed = def && def.x != null;
+    this.frames.push(f); this.byId[id] = f; return this;
+  },
+  layout(kind, ids, o) { this.layouts.push({ kind, ids, o: o || {} }); return this; },
+  path(list) { this.pathList = list; return this; },
+  deco(html, o) { this.decos.push(Object.assign({ html, x: 0, y: 0, w: 1600, h: 900, rotate: 0 }, o)); return this; },
+  link(a, b, o) { this.links.push({ a, b, o: o || {} }); return this; },
+  credits(list) { this.creditList = this.creditList.concat(list || []); return this; },
+  // themes the viewer can switch between (bar button, key C): [{name, vars: {'--ground': '#…', …}, background?}]; the first is the deck's own
+  themes(list) { this.themeList = Array.isArray(list) ? list : []; return this; },
+};
+// A clip: a short motion film inside a frame, playing on a loop like a GIF.
+// {scenes: [{name, dur, init(k), render(t, k)}], loop: true, poster: seconds}. Each scene gets its own k.stage.
+function clipAnim(c) {
+  const scenes = c.scenes || [c], total = scenes.reduce((a, s) => a + s.dur, 0);
+  const mode = c.stops ? 'once' : c.play || (c.loop === true ? 'loop' : 'once');   // once: play through and hold the end; loop: like a GIF; click: one scene per click
+  const poster = c.poster == null ? (mode === 'click' ? Math.max(0, scenes[0].dur - .05) : total - .05) : c.poster;
+  let cur = null;
+  const show = (s, lt) => { if (cur !== s) { if (cur) cur.box.style.display = 'none'; s.box.style.display = 'block'; cur = s; } s.render.call(s, lt, s.k); };
+  return { beats: mode === 'click' ? scenes.length - 1 : 0, clip: true, mode, total, stops: c.stops, wait: c.wait, dur: total, ambient: !!c.ambient, partLen: b => scenes[Math.min(b, scenes.length - 1)].dur,
+    async init(k) {
+      for (const s of scenes) { const box = document.createElement('div'); box.style.cssText = 'position:absolute;inset:0;display:none'; k.stage.append(box);
+        s.k = Object.assign(Object.create(k), { stage: box, dur: s.dur }); s.box = box; if (s.init) await s.init.call(s, s.k); }
+    },
+    render(t, k) {
+      if (mode === 'click') { const s = scenes[Math.min(k.beat, scenes.length - 1)]; return show(s, t >= 59 ? s.dur - .05 : Math.max(0, Math.min(t, s.dur - 1e-3))); }
+      t = c.stops ? Math.min(t, total - 1e-3) : t >= 59 ? poster : t < 0 ? 0 : mode === 'loop' ? t % total : Math.min(t, total - 1e-3);    // at rest a clip shows its poster
+      let a = 0, s = scenes[scenes.length - 1];
+      for (const x of scenes) { if (t < a + x.dur) { s = x; break; } a += x.dur; }
+      show(s, t - a);
+    } };
+}
+// Stops: one continuous animation (render(t) over dur seconds) with pause points. On arrival it plays to
+// the first stop and waits; each click plays on to the next stop. {dur, stops: [2.5, 6], init, render,
+// wait: true to hold at 0 until the first click}. Works on anim and on clip (over all its scenes).
+// Typing: any element with data-type inside an animated slide (a command line in a terminal) types itself out,
+// character by character with a caret, from the moment it first becomes visible; an element with data-after
+// (its output) appears only once the command before it in the same panel has finished typing. Children with
+// class "pr" (a prompt such as "$ ") show at once. Typing always ends before the next stop, so a slide never rests
+// on a half-typed command. Times come from sampling the slide's own render, so it stays a pure function of t.
+function typeSplit(el) {
+  if (el._tch) return el._tch;
+  const chars = [], walk = n => { for (const c of [...n.childNodes]) {
+    if (c.nodeType === 3) { const frag = document.createDocumentFragment(); for (const ch of c.nodeValue) { const sp = document.createElement('span'); sp.className = 'dk-tch'; sp.textContent = ch; frag.append(sp); chars.push(sp); } c.replaceWith(frag); }
+    else if (c.nodeType === 1 && !c.classList.contains('pr') && !c.hasAttribute('data-type-skip')) walk(c); } };
+  walk(el); el._tch = chars; return chars;
+}
+function typeShow(el, n, caret) {
+  const ch = typeSplit(el); n = Math.max(0, Math.min(ch.length, Math.round(n)));
+  if (el._tn !== n) { for (let i = 0; i < ch.length; i++) ch[i].style.visibility = i < n ? '' : 'hidden'; el._tn = n; }
+  let c = el._tcar; if (caret) { if (!c) { c = el._tcar = document.createElement('span'); c.className = 'dk-caret'; } const ref = n ? ch[n - 1] : null; if (ref) { if (c.previousSibling !== ref) ref.after(c); } else if (ch[0] && c.nextSibling !== ch[0]) ch[0].before(c); }
+  else if (c && c.parentNode) c.remove();
+}
+window.kit.type = (el, p, caret = p > 0 && p < 1) => typeShow(el, typeSplit(el).length * Math.max(0, Math.min(1, p)), caret);
+function typeVisible(el, stage) { for (let e = el; e && e !== stage; e = e.parentElement) { const st = e.style; if (st.display === 'none' || st.visibility === 'hidden' || (st.opacity !== '' && +st.opacity < .5)) return false; } return true; }
+function typePlan(a, k, ends, dur) {
+  const els = [...k.stage.querySelectorAll('[data-type], [data-after]')]; if (!els.length) return null;
+  const seen = new Map(), step = .05;
+  for (let t = 0; t <= dur + 1e-9 && seen.size < els.length; t += step) {
+    const b = ends.findIndex(e => t <= e + 1e-9), k2 = Object.create(k); k2.part = b < 0 ? ends.length - 1 : b; k2.parts = ends.length;
+    try { a.render.call(a, t, k2); } catch (e) { break; }
+    for (const el of els) if (!seen.has(el) && typeVisible(el, k.stage)) seen.set(el, t);
+  }
+  const plan = [], last = new Map();
+  for (const el of els) {
+    const box = el.parentElement, app = seen.has(el) ? seen.get(el) : 0, prev = last.get(box) || 0;
+    const start = Math.max(app, prev), stop = ends.find(e => e > start + 1e-6), lim = (stop == null ? dur : stop) - .08;
+    if (el.hasAttribute('data-type')) {
+      const n = typeSplit(el).length, end = Math.min(start + Math.max(.3, Math.min(1.5, n / 30)), lim);
+      plan.push({ el, kind: 'type', start, end: end > start + .05 ? end : start }); last.set(box, end > start + .05 ? end : start);
+    } else plan.push({ el, kind: 'after', start });
+  }
+  return plan;
+}
+function typeApply(plan, t) {
+  for (const s of plan) {
+    if (s.kind === 'after') { const v = t >= s.start; if (s.el._tv !== v) { s.el.style.visibility = v ? '' : 'hidden'; s.el._tv = v; } continue; }
+    const p = s.end <= s.start ? (t >= s.start ? 1 : 0) : Math.max(0, Math.min(1, (t - s.start) / (s.end - s.start)));
+    const v = t >= s.start; if (s.el._tv !== v) { s.el.style.visibility = v ? '' : 'hidden'; s.el._tv = v; }   // the prompt waits for its turn too
+    typeShow(s.el, typeSplit(s.el).length * p, p > 0 && p < 1);
+  }
+}
+function stopsAnim(a) {
+  const dur = a.dur || a.total, cuts = [...(a.wait ? [0] : []), ...a.stops.filter(x => x > 0 && x < dur).sort((x, y) => x - y)];
+  const starts = [0, ...cuts], ends = [...cuts, dur];
+  let plan = null;
+  return { beats: cuts.length, stops: true, dur, starts, ends, base: a, ambient: !!a.ambient,
+    async init(k) { const r = a.init && await a.init.call(a, k); plan = typePlan(a, k, ends, dur); return r; },
+    render(t, k) {
+      const b = Math.min(k.beat, ends.length - 1), a0 = starts[b], a1 = ends[b];
+      const end = b < ends.length - 1 ? a1 - 1e-3 : a1;   // rest just before the next part, so a stop on a scene boundary holds the finished scene
+      const tt = t >= 59 ? end : Math.max(a0, Math.min(end, a0 + Math.max(0, t)));
+      const k2 = Object.create(k); k2.part = b; k2.parts = ends.length;
+      const r = a.render.call(a, tt, k2); if (plan) typeApply(plan, tt); return r;
+    } };
+}
+// say(el, [[t0, 'text'], [t1, 'text'], …], t): show the text whose time has come, crossfading over 0.3 s.
+// For a headline or caption that changes at each stop, inside render(t). Text is set as plain text.
+window.kit.say = function (el, cues, t, fade = .3) {
+  let i = -1; for (let j = 0; j < cues.length; j++) if (t >= cues[j][0]) i = j;
+  const txt = i < 0 ? '' : cues[i][1]; if (el.textContent !== txt) el.textContent = txt;
+  const into = i < 0 ? 0 : t - cues[i][0];
+  el.style.opacity = String(i < 0 ? 0 : Math.min(1, into / fade));   // fades in; the old text stays until the cue (safe on a stop)
+};
+// Local images: asset('logo.png') — build.py embeds the file as a data: URI.
+window.asset = p => p;
+</script>
+<script id="deck">
+{ // the deck's own scope: its names never hide the browser's (URL, Image, name…)
+/*__DECK__*/
+}
+</script>
+<script>
+/* ---------- Deck runtime: layout, camera, steps, presenting ---------- */
+(async function () {
+  'use strict';
+  await null;   // let the capture script below run first, so "Download this deck" saves the page as built
+  const D = window.Deck, cfg = D.cfg, kit = window.kit, W = cfg.width, H = cfg.height, DW = 1600;
+  const { seg, lerp, eio, eo, clamp01 } = kit;
+  const params = new URLSearchParams(location.search), RENDER = params.has('render');
+  if (RENDER) document.body.classList.add('render');
+  document.title = cfg.title || document.title;
+  const $ = id => document.getElementById(id);
+  const stage = $('stage'), world = $('world'), bg = $('bg'), frameEl = $('frame'), links = world.querySelector('.dk-links');
+  stage.style.width = W + 'px'; stage.style.height = H + 'px'; stage.style.background = cfg.background;
+  $('app').style.setProperty('--deck-outer', cfg.background);
+
+  // Fonts: same slots as the motion skill; build.py embeds them as <style id="mo-fonts">.
+  const STACK = { sans: 'system-ui, -apple-system, "Segoe UI", sans-serif', serif: 'Georgia, "Times New Roman", serif', mono: 'ui-monospace, "SF Mono", Menlo, monospace', display: 'system-ui, sans-serif' };
+  const fams = [];
+  for (const slot in cfg.fonts) { const f = cfg.fonts[slot]; if (!f) continue; const fam = typeof f === 'string' ? f : f.family, ws = (f.weights || [400, 700]);
+    fams.push({ fam, ws }); stage.style.setProperty('--' + slot, '"' + fam + '", ' + (f.fallback || STACK[slot] || STACK.sans)); }
+  if (fams.length) {
+    if (!$('mo-fonts')) {
+      const q = fams.map(x => 'family=' + encodeURIComponent(x.fam).replace(/%20/g, '+') + ':wght@' + x.ws.slice().sort((a, b) => a - b).join(';')).join('&');
+      const link = document.createElement('link'); link.rel = 'stylesheet'; link.href = 'https://fonts.googleapis.com/css2?' + q + '&display=block'; document.head.append(link);
+      await Promise.race([new Promise(r => { link.onload = r; link.onerror = r; }), new Promise(r => setTimeout(r, 2500))]);
+    }
+    await Promise.race([Promise.all(fams.flatMap(x => x.ws.map(w => document.fonts.load(w + ' 40px "' + x.fam + '"').catch(() => 0)))), new Promise(r => setTimeout(r, 2500))]);
+  }
+
+  // Default theme; the deck's own Deck.css comes after it and wins.
+  const THEME = `
+#stage { --ground:${cfg.background}; --main:#6E7BFF; --ink:#F3F1EC; --accent:#FFB547;
+  --panel:color-mix(in srgb, var(--ink) 6%, var(--ground)); --line:color-mix(in srgb, var(--ink) 16%, var(--ground)); --dim:color-mix(in srgb, var(--ink) 62%, var(--ground));
+  color:var(--ink); font-family:var(--sans, system-ui, sans-serif) }
+#bg { background-image:radial-gradient(circle, color-mix(in srgb, var(--ink) 9%, transparent) 2px, transparent 2.6px); background-size:56px 56px }
+.dk-scene { position:absolute; inset:0; overflow:hidden; border-radius:inherit }
+/* the text layer sits on top: let clicks through to live controls and players below, except on its own controls */
+.dk-in { pointer-events:none } .dk-in a, .dk-in button, .dk-in input, .dk-in select, .dk-in textarea, .dk-in label, .dk-in [tabindex] { pointer-events:auto }
+.dk-credit { position:absolute; right:22px; bottom:16px; z-index:6; max-width:70%; padding:5px 14px; border-radius:8px; background:rgba(0,0,0,.6); color:#fff; font:500 26px/1.3 var(--sans, system-ui, sans-serif); text-align:right; pointer-events:none }
+.dk-yt { position:absolute; inset:0; background:#000; border-radius:inherit; overflow:hidden }
+.dk-yt img.yt-th { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; opacity:.85 }
+.dk-yt .play { position:absolute; left:50%; top:46%; width:150px; height:104px; margin:-52px 0 0 -75px; border-radius:28px; background:rgba(230,33,23,.92); box-shadow:0 10px 40px rgba(0,0,0,.4) }
+.dk-yt .play::after { content:""; position:absolute; left:58px; top:30px; border-left:44px solid #fff; border-top:22px solid transparent; border-bottom:22px solid transparent }
+.dk-yt .cap { position:absolute; left:0; right:0; bottom:0; padding:28px 40px; background:linear-gradient(transparent, rgba(0,0,0,.85)); color:#fff; font:600 38px/1.25 var(--sans, system-ui, sans-serif) }
+.dk-yt .cap small { display:block; margin-top:8px; font-size:26px; font-weight:500; opacity:.85 }
+.dk-yt a.watch { color:#fff; text-decoration:underline }
+.dk-yt iframe { position:absolute; inset:0; width:100%; height:100%; border:0; background:#000; opacity:0 }
+.dk-yt.playing iframe { opacity:1 }
+.dk-yt .link { position:absolute; right:18px; top:16px; z-index:3; padding:10px 18px; border-radius:10px; background:rgba(0,0,0,.65); color:#fff; font:600 26px/1 var(--sans, system-ui, sans-serif); text-decoration:none }
+.dk-yt.playing .link { display:none }   /* the player has its own YouTube link */
+.dk-credits-list { margin:18px 0 0; padding:0; list-style:none; display:grid; gap:14px 48px; font-size:26px; line-height:1.3; overflow-wrap:anywhere }
+.dk-credits-list.two { grid-template-columns:1fr 1fr }
+.dk-frame[data-id=credits] .dk-title { font-size:72px }
+.dk-frame[data-id=credits] .dk-in { gap:10px; padding:80px 110px }
+.dk-credits-list b { font-weight:600 } .dk-credits-list span { color:var(--dim) }
+.dk-video { position:absolute; inset:0; width:100%; height:100%; display:block; border-radius:inherit; background:var(--ground) }
+.dk-in { position:absolute; inset:0; box-sizing:border-box; padding:110px 130px; display:flex; flex-direction:column; gap:26px; overflow:hidden }
+.dk-kick { margin:0; font-family:var(--mono, monospace); font-size:34px; font-weight:600; letter-spacing:.12em; text-transform:uppercase; color:var(--accent) }
+.dk-title { margin:0; font-family:var(--display, var(--sans, sans-serif)); font-size:104px; font-weight:700; line-height:1.02; letter-spacing:-0.025em; color:var(--ink) }
+.dk-sub { margin:0; font-size:44px; line-height:1.3; color:var(--dim) }
+.dk-pts { margin:14px 0 0; padding:0; list-style:none; display:flex; flex-direction:column; gap:22px }
+.dk-pts li { position:relative; padding-left:54px; font-size:50px; line-height:1.25 }
+.dk-pts li::before { content:""; position:absolute; left:6px; top:.42em; width:22px; height:22px; border-radius:50%; background:var(--accent) }
+.dk-rect { background:var(--panel); border-radius:56px; box-shadow:inset 0 0 0 4px var(--line) }
+.dk-circle { background:var(--panel); border-radius:50%; box-shadow:inset 0 0 0 4px var(--line) }
+.dk-circle .dk-in { align-items:center; justify-content:center; text-align:center; padding:150px }
+.dk-circle .dk-pts li { padding-left:0 } .dk-circle .dk-pts li::before { display:none }
+.dk-bracket::before, .dk-bracket::after { content:""; position:absolute; top:0; bottom:0; width:70px; border:10px solid var(--accent) }
+.dk-bracket::before { left:0; border-right:0; border-radius:28px 0 0 28px } .dk-bracket::after { right:0; border-left:0; border-radius:0 28px 28px 0 }
+.dk-none { background:transparent }
+.dk-kid.dk-rect, .dk-kid.dk-circle { background:color-mix(in srgb, var(--main) 16%, var(--ground)); box-shadow:inset 0 0 0 4px color-mix(in srgb, var(--main) 45%, var(--ground)) }
+.dk-link { fill:none; stroke:var(--line); stroke-linecap:round }
+.dk-has-kids .dk-in { justify-content:flex-start }
+.dk-slides .dk-frame.dk-rect, .dk-slides .dk-frame.dk-circle { border-radius:0; box-shadow:none }
+.dk-circle.dk-has-kids .dk-in { padding-top:230px }
+`;
+  if (cfg.style === 'slides') stage.classList.add('dk-slides');
+  const css = document.createElement('style'); css.textContent = THEME + '\n' + D.cssText.join('\n'); stage.prepend(css);
+
+  // ---------- layout ----------
+  const F = D.frames, byId = D.byId;
+  for (const f of F) if (f.shape === 'circle' && !f.fixed && f.h === 900) f.h = f.w;   // circles are round unless told otherwise
+  const pick = ids => (ids && ids.length ? ids.filter(id => !D.skipped.includes(id)) : F.filter(f => !f.parent).map(f => f.id)).map(id => { if (!byId[id]) throw new Error('layout: no frame ' + id); return byId[id]; });
+  if (cfg.style !== 'slides') for (const L of D.layouts) {
+    const list = pick(L.ids), o = L.o, n = list.length, put = (f, x, y, r) => { if (f.fixed && !o.force) return; f.x = x; f.y = y; if (r != null) f.rotate = r; };
+    const w0 = Math.max(...list.map(f => f.w));
+    if (L.kind === 'ring') {
+      const center = o.center ? byId[o.center] : null, ring = list.filter(f => f !== center), m = ring.length;
+      const rw = Math.max(...ring.map(f => f.w)), cw = center ? center.w * (o.centerScale || 1) : 0;
+      // just far enough out that the stops clear the hub and each other
+      const R = o.radius || Math.max((cw / 2 + rw / 2) * 1.18 / (o.squash || .78), (rw * 1.12) / (2 * Math.sin(Math.PI / Math.max(2, m))));
+      if (center) { put(center, 0, 0); if (o.centerScale) { center.w *= o.centerScale; center.h *= o.centerScale; } }
+      ring.forEach((f, i) => { const a = (o.start == null ? -90 : o.start) * Math.PI / 180 + i / m * Math.PI * 2; put(f, Math.cos(a) * R, Math.sin(a) * R * (o.squash || .78), o.tilt ? (i % 2 ? o.tilt : -o.tilt) : null);
+        if (o.connect !== false && center) D.links.push({ a: center.id, b: f.id, o: {} }); });
+    } else if (L.kind === 'path') {
+      const gap = o.gap || w0 * 1.3, amp = o.amp == null ? .55 : o.amp;
+      list.forEach((f, i) => { put(f, i * gap, Math.sin(i * 1.1) * f.h * amp * 1.6, o.tilt ? (i % 2 ? o.tilt : -o.tilt) : null); if (o.connect !== false && i) D.links.push({ a: list[i - 1].id, b: f.id, o: { curve: true } }); });
+    } else if (L.kind === 'timeline') {
+      const gap = o.gap || w0 * 1.18;
+      list.forEach((f, i) => { put(f, i * gap, (i % 2 ? 1 : -1) * f.h * .62); });
+      const y = 0, x0 = -w0 * .6, x1 = (n - 1) * gap + w0 * .6;
+      D.decos.push({ html: '<div style="position:absolute;inset:0;border-radius:12px;background:var(--accent)"></div>', x: (x0 + x1) / 2, y, w: x1 - x0, h: 22, rotate: 0, under: true });
+      list.forEach((f, i) => D.decos.push({ html: '<div style="position:absolute;inset:0;border-radius:50%;background:var(--accent);box-shadow:0 0 0 18px var(--ground)"></div>', x: i * gap, y, w: 90, h: 90, rotate: 0, under: true }));
+      if (o.connect !== false) list.forEach((f, i) => D.links.push({ a: f.id, b: null, o: { to: [i * gap, 0] } }));
+    } else if (L.kind === 'tree') {
+      const [root, ...kids] = list, gap = o.gap || w0 * 1.2, dy = o.dy || root.h * 1.6;
+      put(root, 0, 0); kids.forEach((f, i) => { put(f, (i - (kids.length - 1) / 2) * gap, dy); if (o.connect !== false) D.links.push({ a: root.id, b: f.id, o: { elbow: true } }); });
+    } else if (L.kind === 'grid') {
+      const cols = o.cols || Math.ceil(Math.sqrt(n)), gx = o.gap || w0 * 1.18, gy = (o.gapY || Math.max(...list.map(f => f.h)) * 1.25);
+      list.forEach((f, i) => put(f, (i % cols) * gx, Math.floor(i / cols) * gy));
+    } else throw new Error('layout: unknown kind ' + L.kind);
+  }
+  const SLIDES = cfg.style === 'slides';
+  if (cfg.overview == null) cfg.overview = !SLIDES;
+  if (cfg.grid == null) cfg.grid = !SLIDES;
+  // children sit inside their parent's lower half, in a row, until they are placed by hand
+  const kidsOf = id => SLIDES ? [] : F.filter(f => f.parent === id);
+  if (D.creditList.length && !byId['credits']) {   // every credited image, listed on a closing slide (required for CC BY / BY-SA)
+    const clean = x => String(x || '').replace(/\s*\(\d{8,}\)\s*$/, '');   // drop Flickr ids from titles
+    const items = D.creditList.map(c => '<li><b>' + kit.esc(clean(c.title) || c.file) + '</b><br><span>' + kit.esc([c.author, c.license, c.source].filter(Boolean).join(' · ')) + (c.source_url ? '<br>' + kit.esc(c.source_url.replace(/^https?:\/\//, '')) : '') + '</span></li>').join('');
+    D.frame('credits', { name: 'Image credits', title: 'Image credits', html: '<ul class="dk-credits-list' + (D.creditList.length > 3 ? ' two' : '') + '">' + items + '</ul>', notes: 'Image credits: ' + D.creditList.map(c => (c.title || c.file) + ', ' + c.author + ', ' + c.license).join('; ') });
+    if (!SLIDES) { const others = F.filter(f => f.id !== 'credits' && f.x != null); const cr = byId['credits']; cr.y = 0; cr.x = (others.length ? Math.max(...others.map(f => f.x + f.w / 2)) : 0) + cr.w * .8; cr.fixed = true; }
+  }
+  function placeKids(p) {
+    const kids = kidsOf(p.id).filter(k => !k.fixed); if (!kids.length) return;
+    const areaW = p.w * (p.shape === 'circle' ? .76 : .84), areaH = p.h * (p.shape === 'circle' ? .4 : .44), n = kids.length, gap = p.w * .03;
+    const cw = Math.min((areaW - gap * (n - 1)) / n, areaH * 16 / 9), ch = cw * 9 / 16;
+    const a = (p.rotate || 0) * Math.PI / 180;
+    kids.forEach((k, i) => {
+      const lx = (i - (n - 1) / 2) * (cw + gap), ly = p.h * (p.shape === 'circle' ? .14 : .2);
+      const kw0 = k.w, ratio = k.h / k.w; k.w = k.shape === 'circle' ? Math.min(cw, ch * 1.2) : cw; k.h = k.shape === 'circle' ? k.w : k.w * (ratio || 9 / 16);
+      k.x = p.x + lx * Math.cos(a) - ly * Math.sin(a); k.y = p.y + lx * Math.sin(a) + ly * Math.cos(a); k.rotate = p.rotate || 0;
+    });
+  }
+  const depth = f => { let d = 0, x = f; while (x.parent) { x = byId[x.parent]; if (!x) throw new Error('frame ' + f.id + ': no parent'); d++; } return d; };
+  if (SLIDES) {   // PowerPoint-like: every frame is a 16:9 slide, side by side in order, so the next one glides in; no map extras
+    F.forEach(f => { if (f.shape === 'circle') f.shape = 'rect'; f.h = f.w * H / W; });
+    let x = 0; F.forEach((f, i) => { if (i) x += (F[i - 1].w + f.w) / 2 * 1.08; f.x = x; f.y = 0; f.rotate = 0; });
+    D.links.length = 0; D.decos = D.decos.filter(d => !d.under);
+  } else F.slice().sort((a, b) => depth(a) - depth(b)).forEach(f => { if (f.x == null) { f.x = 0; f.y = 0; } placeKids(f); });
+  F.forEach(f => { if (f.y == null) f.y = 0; if (kidsOf(f.id).length) f.hasKids = true; });
+
+  // ---------- build the canvas ----------
+  const DH = f => DW * f.h / f.w;
+  const place = (el, x, y, w, h, r) => { const dh = DW * h / w; el.style.width = DW + 'px'; el.style.height = dh + 'px';
+    el.style.transform = 'translate(' + x + 'px,' + y + 'px) rotate(' + (r || 0) + 'deg) scale(' + (w / DW) + ') translate(' + (-DW / 2) + 'px,' + (-dh / 2) + 'px)'; };
+  for (const d of D.decos) { const el = document.createElement('div'); el.className = 'dk-deco'; el.style.position = 'absolute'; el.style.left = '0'; el.style.top = '0'; el.style.transformOrigin = '0 0';
+    el.innerHTML = d.html; place(el, d.x, d.y, d.w, d.h, d.rotate); if (d.under) world.insertBefore(el, links.nextSibling); else world.append(el); }
+  const esc = kit.esc;
+  // depth order: parents under their children
+  F.slice().sort((a, b) => depth(a) - depth(b)).forEach(f => {
+    const el = document.createElement('div'); el.className = 'dk-frame dk-' + f.shape + (f.parent && cfg.style !== 'slides' ? ' dk-kid' : '') + (f.hasKids ? ' dk-has-kids' : '') + (f.cls ? ' ' + f.cls : ''); el.dataset.id = f.id;
+    const hasText = f.kick || f.title || f.sub || f.points.length || f.html;
+    el.innerHTML = (f.anim || f.video || f.youtube || f.interactive ? '<div class="dk-scene' + (f.interactive ? ' dk-live' : '') + '"></div>' : '') + (hasText ? '<div class="dk-in">' : '<div class="dk-in" style="display:none">') + (f.kick ? '<p class="dk-kick">' + f.kick + '</p>' : '') + (f.title ? '<h2 class="dk-title">' + f.title + '</h2>' : '') + (f.sub ? '<p class="dk-sub">' + f.sub + '</p>' : '') +
+      (f.points.length ? '<ul class="dk-pts">' + f.points.map(p => '<li>' + p + '</li>').join('') + '</ul>' : '') + (f.html || '') + '</div>';
+    place(el, f.x, f.y, f.w, f.h, f.rotate); world.append(el); f.el = el; f.pts = [...el.querySelectorAll('.dk-pts > li')];
+    if (f.youtube) {   // a card with the real thumbnail (embedded at build) and a link; the player loads over it when the slide is shown
+      const y = f.youtube, sc = el.querySelector('.dk-scene'), th = D._ytThumbs[y.id], href = 'https://www.youtube.com/watch?v=' + y.id + (y.start ? '&t=' + y.start + 's' : '');
+      const box = document.createElement('div'); box.className = 'dk-yt';
+      box.innerHTML = (th ? '<img class="yt-th" alt="">' : '') + '<div class="play"></div><div class="cap"></div><a class="link" target="_blank" rel="noopener">Watch on YouTube ↗</a>';
+      if (th) box.querySelector('img').src = th;
+      box.querySelector('.cap').textContent = y.title || 'Video'; const sm = document.createElement('small');
+      sm.textContent = location.protocol === 'file:' ? 'Opened from a file, YouTube won’t play here: click to watch on YouTube.' : 'Plays here when the slide is shown.'; box.querySelector('.cap').append(sm);
+      box.querySelector('.link').href = href; box.addEventListener('click', e => { if (!box.querySelector('iframe')) window.open(href, '_blank', 'noopener'); });
+      sc.append(box); f.yt = box; }
+    if (f.credit) { const c = (D.creditList.find(x => x.file === f.credit) || { title: f.credit });
+      const d = document.createElement('div'); d.className = 'dk-credit'; d.textContent = 'Image: ' + [c.author, c.license].filter(Boolean).join(' · '); el.append(d); }
+    if (f.video) { const v = document.createElement('video'); v.className = 'dk-video'; v.muted = true; v.loop = f.video.loop !== false; v.playsInline = true; v.preload = 'auto';
+      v.setAttribute('muted', ''); v.setAttribute('playsinline', ''); v.style.objectFit = f.video.fit || 'cover'; if (f.video.speed) v.playbackRate = f.video.speed;
+      v.src = f.video.src; el.querySelector('.dk-scene').append(v); f.vid = v; v.addEventListener('loadeddata', () => { if (v.currentTime === 0) v.currentTime = f.video.poster == null ? .05 : f.video.poster; }, { once: true }); }
+    if (f.anim) { const sc = el.querySelector('.dk-scene');
+      // the scene's own kit: the motion kit, plus where it draws and which beat it is on
+      f.k = Object.assign(Object.create(kit), { stage: sc, W: DW, H: DW * f.h / f.w, frame: f.id, beats: f.anim.beats || 0, beat: 0, t: 0 });
+      f.k.b = (n, a, b2) => f.k.beat > n ? 1 : f.k.beat === n ? seg(f.k.t, a, b2) : 0; }
+  });
+  // links: centre to centre (or to a point), drawn under the frames
+  const lw = cfg.linkWidth;
+  links.innerHTML = D.links.map(L => { const a = byId[L.a], b = L.b ? byId[L.b] : null; if (!a || (L.b && !b)) return '';
+    const x1 = a.x, y1 = a.y, x2 = b ? b.x : L.o.to[0], y2 = b ? b.y : L.o.to[1];
+    const d = L.o.curve ? 'M' + x1 + ' ' + y1 + ' C' + (x1 + (x2 - x1) * .5) + ' ' + y1 + ' ' + (x1 + (x2 - x1) * .5) + ' ' + y2 + ' ' + x2 + ' ' + y2
+      : L.o.elbow ? 'M' + x1 + ' ' + y1 + ' V' + ((y1 + y2) / 2) + ' H' + x2 + ' V' + y2 : 'M' + x1 + ' ' + y1 + ' L' + x2 + ' ' + y2;
+    return '<path class="dk-link" d="' + d + '" stroke-width="' + (L.o.width || lw) + '"' + (L.o.dash ? ' stroke-dasharray="' + L.o.dash + '"' : '') + '/>'; }).join('');
+
+  // ---------- steps ----------
+  const tops = F.filter(f => !f.parent || SLIDES && !byId[f.parent]), reveals = f => f.anim ? (f.anim.beats || 0) : (f.reveal == null ? cfg.reveal : f.reveal) ? f.points.length : 0;
+  let path = D.pathList && D.pathList.filter(id => !D.skipped.includes(id));
+  if (!path) {
+    // open on the first frame (the title), pull back to the map, then visit each stop, returning to the map between them
+    path = [];
+    const walk = f => { path.push(f.id); (SLIDES ? F.filter(k => k.parent === f.id) : kidsOf(f.id)).forEach(walk); };
+    // returnToOverview: true (after every stop) · false (never) · 'sections' (after a stop that has children; the default)
+    const back = cfg.returnToOverview == null ? (cfg.camera === 'zoom' ? true : 'sections') : cfg.returnToOverview;
+    const backAfter = f => back === true || (back === 'sections' && kidsOf(f.id).length > 0);
+    (SLIDES ? F.filter(f => !f.parent) : tops).forEach((f, i, arr) => { walk(f); if (cfg.overview && tops.length > 1 && (i === 0 || i === tops.length - 1 || (tops.length > 2 && backAfter(f)))) path.push('overview'); });
+  }
+  const STEPS = [];
+  for (const id of path) {
+    if (id === 'overview') { STEPS.push({ kind: 'overview', id: null, k: 0 }); continue; }
+    const f = byId[id]; if (!f) throw new Error('path: no frame ' + id);
+    const r = reveals(f); for (let k = 0; k <= r; k++) STEPS.push({ kind: 'frame', id, k: r || f.anim ? k : f.points.length });
+  }
+  if (!STEPS.length) STEPS.push({ kind: 'overview', id: null, k: 0 });
+  const label = s => s.kind === 'overview' ? 'Overview' : (byId[s.id].name || byId[s.id].title || s.id).replace(/<[^>]+>/g, '') + (s.k && reveals(byId[s.id]) ? (byId[s.id].anim ? ' · click ' : ' · point ') + s.k : '');
+
+  // ---------- camera ----------
+  const corners = f => { const a = (f.rotate || 0) * Math.PI / 180, c = Math.cos(a), s = Math.sin(a), hw = f.w / 2, hh = f.h / 2;
+    return [[-hw, -hh], [hw, -hh], [hw, hh], [-hw, hh]].map(([x, y]) => [f.x + x * c - y * s, f.y + x * s + y * c]); };
+  function overviewCam() {
+    const pts = tops.flatMap(corners).concat(D.decos.flatMap(d => corners(d)));
+    const xs = pts.map(p => p[0]), ys = pts.map(p => p[1]), x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys);
+    return { x: (x0 + x1) / 2, y: (y0 + y1) / 2, s: Math.min(W / ((x1 - x0) * 1.08), H / ((y1 - y0) * 1.1)), r: 0 };
+  }
+  const OV = overviewCam();
+  const PAD = SLIDES ? 1 : 1.06;
+  const camOf = st => st.kind === 'overview' ? OV : (f => ({ x: f.x, y: f.y, s: Math.min(W / (f.w * PAD), H / (f.h * PAD)), r: f.rotate || 0 }))(byId[st.id]);
+  const shortest = d => ((d % 360) + 540) % 360 - 180;
+  function hop(A, B) {
+    const lA = Math.log(A.s), lB = Math.log(B.s), lo = Math.min(lA, lB);
+    // the scale that shows both views at once: if it is smaller than either end, dip out to it mid-way
+    const hwA = W / 2 / A.s, hhA = H / 2 / A.s, hwB = W / 2 / B.s, hhB = H / 2 / B.s;
+    const bw = Math.max(A.x + hwA, B.x + hwB) - Math.min(A.x - hwA, B.x - hwB), bh = Math.max(A.y + hhA, B.y + hhB) - Math.min(A.y - hhA, B.y - hhB);
+    const lBoth = Math.log(Math.min(W / bw, H / bh)), dip = cfg.camera === 'zoom' ? Math.max(0, lo - lBoth) * .85 : 0;
+    // calm: neighbours glide; a jump of more than ~1.5 screen widths fades instead, so the audience never chases the camera
+    const far = cfg.camera === 'calm' && Math.hypot(A.x - B.x, A.y - B.y) > 1.5 * Math.max(W / A.s, W / B.s);
+    const fade = cfg.camera === 'fade' || far;
+    const zoom = Math.abs(lA - lB), dur = fade ? .5 : cfg.camera === 'calm' ? Math.max(.5, Math.min(.9, .55 + .12 * zoom)) : Math.max(.55, Math.min(1.7, .6 + .22 * zoom + .45 * dip));
+    return { A, B, lA, lB, dip, dur, fade, still: Math.hypot(A.x - B.x, A.y - B.y) < 1e-6 && zoom < 1e-6 && Math.abs(shortest(B.r - A.r)) < 1e-6 };
+  }
+  function camAt(h, u) {   // u: 0..1 of the camera move
+    if (h.still) return h.B;
+    if (h.fade) { world.style.opacity = String(Math.abs(1 - 2 * clamp01(u))); return u < .5 ? h.A : h.B; }
+    const e = eio(u), ls = lerp(h.lA, h.lB, e) - h.dip * 4 * e * (1 - e);
+    return { x: lerp(h.A.x, h.B.x, e), y: lerp(h.A.y, h.B.y, e), s: Math.exp(ls), r: h.A.r + shortest(h.B.r - h.A.r) * e };
+  }
+  function applyCam(c) {
+    world.style.transform = 'translate(' + W / 2 + 'px,' + H / 2 + 'px) rotate(' + (-c.r).toFixed(4) + 'deg) scale(' + c.s.toFixed(6) + ') translate(' + (-c.x).toFixed(3) + 'px,' + (-c.y).toFixed(3) + 'px)';
+    if (cfg.grid) { const g = 56, ox = -((c.x * c.s * .12) % g) - g, oy = -((c.y * c.s * .12) % g) - g; bg.style.width = (W + 3 * g) + 'px'; bg.style.height = (H + 3 * g) + 'px'; bg.style.transform = 'translate(' + ox.toFixed(2) + 'px,' + oy.toFixed(2) + 'px)'; }
+    else bg.style.display = 'none';
+  }
+  // which points of each frame are showing at step i (reveals are kept once shown)
+  function shownAt(i) { const m = {}; for (let j = 0; j <= i && j < STEPS.length; j++) { const s = STEPS[j]; if (s.kind === 'frame') m[s.id] = Math.max(m[s.id] || 0, s.k); } return m; }
+  const REVEAL = .38, REST = 60;
+  let part = { len: 0, off: 0, loop: false, has: false };
+  // how long the animation part shown at step i runs (0: none or unknown; loop: never ends)
+  function partFor(i) {
+    const cur = STEPS[i].kind === 'frame' ? byId[STEPS[i].id] : null, r = { len: 0, loop: false, has: !!(cur && (cur.anim || cur.vid)) };
+    if (cur && cur.anim) { const a = cur.anim, b = STEPS[i].k;
+      if (a.stops) r.len = a.ends[Math.min(b, a.ends.length - 1)] - a.starts[Math.min(b, a.starts.length - 1)];
+      else if (a.clip && a.mode === 'loop') r.loop = true;
+      else if (a.clip) r.len = a.mode === 'click' ? a.partLen(b) : a.total;
+      else r.len = a.partLen ? a.partLen(b) : 0; }
+    if (cur && cur.vid && !cur.anim) r.loop = cur.vid.loop;
+    return r;
+  }
+  // With reduced motion asked for (e.g. Windows 'Show animations' off) the camera fades instead of gliding;
+  // the slides' own animations still play, because they are the content.
+  const REDUCE = !RENDER && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (REDUCE && cfg.camera !== 'fade') cfg.camera = 'fade';
+  let clockNow = null, slideT0 = 0, slideId = null;   // the slide clock (k.clock): set by the live loop, otherwise equal to t
+  function scene(f, beat, t, clock) { if (!f.anim || f.failed) return; f.k.beat = beat; f.k.t = t; f.k.clock = clock == null ? Math.max(0, t) : clock; try { f.anim.render.call(f.anim, t, f.k); } catch (err) { f.failed = true; console.error('[frame ' + f.id + ']', err); const e = document.createElement('div'); e.className = 'dk-error'; e.textContent = 'Frame "' + f.id + '" failed: ' + (err && err.message || err); f.el.append(e); } }
+  // Draw the transition into step i at seconds tt; A is where the camera was.
+  // scene time on the current frame: from when the camera lands (arrival) or from the click (a beat)
+  const sceneT = (h, tt) => tt - (h.still ? 0 : h.dur * .85);
+  function draw(i, A, tt, full) {
+    const B = camOf(STEPS[i]), h = hop(A, B), u = h.still ? 1 : clamp01(tt / h.dur);
+    world.style.opacity = '1'; applyCam(camAt(h, u));
+    const before = i > 0 ? shownAt(i - 1) : {}, now = shownAt(i), t0 = h.still ? 0 : h.dur * .9;
+    for (const f of F) { const a = before[f.id] || 0, b = now[f.id] || 0;
+      f.pts.forEach((li, j) => { let p = j < a ? 1 : j < b ? eo(seg(tt, t0, t0 + REVEAL)) : 0; li.style.opacity = String(p); li.style.transform = 'translateY(' + (18 * (1 - p)).toFixed(1) + 'px)'; }); }
+    const cur = STEPS[i].kind === 'frame' ? byId[STEPS[i].id] : null;
+    part = Object.assign(partFor(i), { off: h.still ? 0 : h.dur * .85 });
+    if (full) for (const f of F) if (f.anim && f !== cur) scene(f, now[f.id] || 0, REST);   // frames not in view rest on their last beat
+    if (cur && cur.anim) scene(cur, STEPS[i].k, sceneT(h, tt), clockNow);
+    return (h.still ? 0 : h.dur) + (Object.keys(now).some(k => (now[k] || 0) > (before[k] || 0)) ? REVEAL : 0);
+  }
+
+  // ---------- videos: the current frame's plays (muted, looping, like a GIF); the rest pause on their poster ----------
+  let vidSound = false, vidFrame = null;
+  // A viewer whose security policy forbids frames (claude.ai does) reports it: keep the card, say so, never retry there
+  let framesBlocked = false;
+  document.addEventListener('securitypolicyviolation', e => {
+    if (!/frame|child/.test(e.violatedDirective || e.effectiveDirective || '') || !/youtube/.test(e.blockedURI || '')) return;
+    framesBlocked = true;
+    for (const f of F) if (f.yt) { f.ytBlocked = true; const fr = f.yt.querySelector('iframe'); if (fr) fr.remove(); f.yt.classList.remove('playing');
+      const sm = f.yt.querySelector('.cap small'); if (sm) sm.textContent = 'This viewer blocks embedded video: click to watch on YouTube.'; }
+  });
+  function videos(i, sceneT) {
+    const cur = STEPS[i] && STEPS[i].kind === 'frame' ? byId[STEPS[i].id] : null;
+    for (const f of F) { if (!f.yt) continue; const fr = f.yt.querySelector('iframe');
+      if (f === cur && !RENDER && !framesBlocked && location.protocol !== 'file:' && !fr) { const y = f.youtube, q = new URLSearchParams({ rel: '0', modestbranding: '1', playsinline: '1' });
+        if (y.start) q.set('start', y.start); if (y.end) q.set('end', y.end);
+        const ifr = document.createElement('iframe'); ifr.src = 'https://www.youtube-nocookie.com/embed/' + y.id + '?' + q; ifr.title = y.title || 'YouTube video';
+        ifr.allow = 'autoplay; encrypted-media; picture-in-picture; fullscreen'; ifr.referrerPolicy = 'strict-origin-when-cross-origin'; ifr.allowFullscreen = true;
+        // show the player only once it has loaded and nothing blocked it; a blocked embed leaves the card and its link
+        ifr.addEventListener('load', () => setTimeout(() => { if (ifr.isConnected && !f.ytBlocked) f.yt.classList.add('playing'); }, 400));
+        f.yt.insertBefore(ifr, f.yt.querySelector('.link')); }
+      else if (f !== cur && fr) { fr.remove(); f.yt.classList.remove('playing'); } }
+    // the card's link is the way to the video wherever the player can't run
+    for (const f of F) { if (!f.vid) continue; const v = f.vid;
+      if (RENDER) { const t = f === cur ? Math.max(0, sceneT == null ? 1 : sceneT) + (f.video.start || 0) : (f.video.poster == null ? .05 : f.video.poster);
+        v.pause(); const d = v.duration || 0; const want = d && v.loop !== false ? t % d : Math.min(t, d || t); if (Math.abs(v.currentTime - want) > .01) v.currentTime = want; continue; }
+      if (f === cur) { if (vidFrame !== f) { v.currentTime = f.video.start || 0; vidFrame = f; } v.muted = !vidSound; const pr = v.play(); if (pr && pr.catch) pr.catch(() => { v.muted = true; v.play().catch(() => {}); }); }
+      else if (!v.paused) v.pause(); }
+    if (!cur || !cur.vid) vidFrame = null;
+    const sb = document.getElementById('snd'); sb.style.display = cur && cur.vid ? '' : 'none'; sb.setAttribute('aria-pressed', String(vidSound));
+  }
+
+  // ---------- fit the stage to the window ----------
+  function fit() {
+    if (RENDER) { frameEl.style.width = W + 'px'; frameEl.style.height = H + 'px'; stage.style.transform = 'none'; return; }
+    const app = $('app'), aw = app.clientWidth || innerWidth, ah = app.clientHeight || innerHeight;
+    const sc = Math.min(aw / W, ah / H); frameEl.style.width = W * sc + 'px'; frameEl.style.height = H * sc + 'px'; stage.style.transform = 'scale(' + sc + ')';
+  }
+  addEventListener('resize', fit); fit();
+
+  // ---------- presenting ----------
+  let step = 0, cam = OV, anim = null, peek = false, t0 = null;
+  const hm = /^#(\d+)(?:\.(\d+))?$/.exec(location.hash);
+  if (hm) { if (cfg.style === 'slides') { const ids = []; STEPS.forEach((s, i) => { if (s.kind === 'frame' && !ids.some(x => x.id === s.id)) ids.push({ id: s.id, i }); });
+      const sl = ids[Math.min(ids.length - 1, Math.max(0, +hm[1] - 1))]; if (sl) step = Math.min(STEPS.length - 1, sl.i + (+hm[2] || 0)); }
+    else step = Math.min(STEPS.length - 1, +hm[1] - 1); }
+  try { const g = sessionStorage.getItem('deck.goto'); if (g) { sessionStorage.removeItem('deck.goto');
+      let k = D.allIds.indexOf(g); while (k > 0 && !byId[D.allIds[k]]) k--;
+      const i = STEPS.findIndex(st => st.kind === 'frame' && st.id === D.allIds[k]); if (i >= 0) step = i; } } catch (e) {}
+  // Ready light (presenter only): playing (ring fills), ready (green: click to continue), done (grey: next click leaves the slide)
+  const RD = document.getElementById('ready'), RARC = RD.querySelector('.arc'), RDOTS = RD.querySelector('.dots');
+  let indOn = cfg.indicator !== false, readyAt = 0;
+  function indicate(tt, paused) {
+    if (!indOn || !part.has) { RD.className = ''; return; }
+    const st = STEPS[step], f = st.kind === 'frame' ? byId[st.id] : null, nb = f ? reveals(f) : 0;
+    const p = part.loop ? 0 : part.len > 0 ? clamp01((tt - part.off) / part.len) : 1, finished = !part.loop && p >= 1;
+    const last = !f || st.k >= nb;
+    RARC.setAttribute('stroke-dashoffset', (56.55 * (1 - p)).toFixed(2));
+    const dots = nb ? Array.from({ length: nb + 1 }, (_, j) => '<i' + (j <= st.k ? ' class="on"' : '') + '></i>').join('') : ''; if (RDOTS.innerHTML !== dots) RDOTS.innerHTML = dots;
+    const cls = 'show' + (part.loop ? ' loop' : '') + (paused ? ' paused' : finished ? (last ? ' done' : ' ready') : '');
+    if (finished && !readyAt) { readyAt = performance.now(); dimSoon(); } if (!finished) readyAt = 0;
+    RD.className = cls + (readyAt && performance.now() - readyAt > 1500 ? ' dim' : '');
+    const at = document.getElementById('animText');
+    if (at) at.textContent = paused ? 'Paused (K to resume)' : part.loop ? 'Looping' : !finished ? 'Playing… ' + Math.max(0, part.len - (tt - part.off)).toFixed(1) + ' s left' : last ? 'Done: the next click moves on' : 'Ready: click to continue';
+  }
+  let dimT = 0; function dimSoon() { clearTimeout(dimT); dimT = setTimeout(() => { if (readyAt) RD.classList.add('dim'); }, 1600); }
+  addEventListener('mousemove', () => { if (readyAt) { readyAt = performance.now(); RD.classList.remove('dim'); dimSoon(); } });
+  function frameLoop(now) {
+    if (!anim) return;
+    if (anim.paused) { indicate((anim.paused - anim.start) / 1000, true); requestAnimationFrame(frameLoop); return; }
+    const tt = (now - anim.start) / 1000, total = anim.total;
+    if (anim.peek) { const h = hop(anim.A, anim.B); const c = camAt(h, clamp01(tt / h.dur)); applyCam(c); cam = c; if (tt >= h.dur) anim = null; }
+    else {
+      const live = STEPS[anim.i].kind === 'frame' && byId[STEPS[anim.i].id].anim, amb = live && live.ambient;
+      clockNow = (now - slideT0) / 1000; draw(anim.i, anim.A, tt); clockNow = null; cam = camAt(hop(anim.A, camOf(STEPS[anim.i])), clamp01(tt / hop(anim.A, camOf(STEPS[anim.i])).dur)); indicate(tt);
+      if (tt >= total && !live) { anim = null; draw(step, camOf(STEPS[step]), 99); cam = camOf(STEPS[step]); }
+      else if (live && !amb && !part.loop && part.len >= 0 && tt > part.off + part.len + 2) anim = null;   // the part is over: hold its last frame
+      else if (amb && tt > 900) anim = null;   // an ambient slide left for 15 minutes rests
+      else if (live && tt > total + 120) anim = null;   // a loop left running stops after two minutes
+    }
+    if (anim) requestAnimationFrame(frameLoop);
+  }
+  function go(i, instant) {
+    i = Math.max(0, Math.min(STEPS.length - 1, i));
+    if (t0 == null && !RENDER) t0 = performance.now();
+    const A = cam, backIn = i < step && STEPS[i].kind === 'frame' && STEPS[step].kind === 'frame' && STEPS[i].id === STEPS[step].id; step = i; peek = false;
+    if (STEPS[i].id !== slideId) { slideId = STEPS[i].id; slideT0 = performance.now(); }
+    if (backIn) instant = true;
+    videos(i);
+    if (instant) { anim = null; draw(i, camOf(STEPS[i]), 99, true); cam = camOf(STEPS[i]); readyAt = 0; indicate(99);
+      const fa = STEPS[i].kind === 'frame' && byId[STEPS[i].id].anim; if (fa && fa.ambient && !RENDER) { anim = { i, A: camOf(STEPS[i]), start: performance.now() - 99e3, total: 0 }; requestAnimationFrame(frameLoop); } }
+    else { const total = draw(i, A, 0, true); anim = { i, A, start: performance.now(), total }; requestAnimationFrame(frameLoop); }
+    ui();
+    try { const sn = SLIDES ? slideOf(i) : -1; history.replaceState(null, '', '#' + (sn >= 0 ? (sn + 1) + (STEPS[i].k ? '.' + STEPS[i].k : '') : (i + 1))); } catch (e) {}
+  }
+  const animated = () => STEPS[step].kind === 'frame' && !!byId[STEPS[step].id].anim;
+  function pauseAnim(on) {
+    const f = STEPS[step].kind === 'frame' ? byId[STEPS[step].id] : null;
+    if (!f || !(f.anim || f.vid)) return; const now = performance.now();
+    if (!anim) { anim = { i: step, A: camOf(STEPS[step]), start: now - 9e5, total: 0 }; requestAnimationFrame(frameLoop); }   // already finished: hold its end
+    const p = on == null ? !anim.paused : on;
+    if (p && !anim.paused) anim.paused = now; else if (!p && anim.paused) { anim.start += now - anim.paused; slideT0 += now - anim.paused; anim.paused = 0; }
+    if (f.vid) { if (p) f.vid.pause(); else f.vid.play().catch(() => {}); }
+    ui();
+  }
+  function finishPart() {
+    const f = STEPS[step].kind === 'frame' ? byId[STEPS[step].id] : null;
+    if (!f || !f.anim) return false; anim = null; draw(step, camOf(STEPS[step]), 99, true); cam = camOf(STEPS[step]); readyAt = 0; indicate(99); ui();
+    if (f.anim.ambient) { anim = { i: step, A: camOf(STEPS[step]), start: performance.now() - 99e3, total: 0 }; requestAnimationFrame(frameLoop); }
+    return true;
+  }
+  function replay() {
+    const f = STEPS[step].kind === 'frame' ? byId[STEPS[step].id] : null;
+    if (!f || !(f.anim || f.vid)) return;
+    const A = camOf(STEPS[step]), now = performance.now(); peek = false;
+    if (f.vid) { f.vid.currentTime = f.video.start || 0; f.vid.play().catch(() => {}); }
+    if (f.anim) { const total = draw(step, A, 0, true); anim = { i: step, A, start: now, total }; requestAnimationFrame(frameLoop); }
+    ui();
+  }
+  function togglePeek(on) {
+    if (SLIDES && !cfg.overview) { $('sb').click(); return; }   // slides: O opens the slides panel
+    peek = on == null ? !peek : on;
+    const B = peek ? OV : camOf(STEPS[step]); anim = { peek: true, A: cam, B, start: performance.now() }; requestAnimationFrame(frameLoop); ui();
+  }
+  // UI
+  const count = $('count'), notes = $('notes'), bar = $('bar'), side = $('side');
+  // slides = frames in route order, each with the first step that shows it
+  const SL = []; STEPS.forEach((st, i) => { if (st.kind === 'frame' && !SL.some(x => x.id === st.id)) SL.push({ id: st.id, i }); });
+  const slideOf = i => { const st = STEPS[i]; return st.kind === 'frame' ? SL.findIndex(x => x.id === st.id) : -1; };
+  // ---------- hidden slides: a frame's `hidden: true`, then choices saved into a downloaded copy, then this browser's choices ----------
+  // Hidden slides stay in the panel (dimmed) and can still be opened from it; →, ←, Home, End and the counter skip them, and Print leaves them out.
+  const hidKey = 'deck.hidden:' + (cfg.title || '');
+  let hidSaved = {}; try { hidSaved = JSON.parse(localStorage.getItem(hidKey) || '{}') || {}; } catch (e) {}
+  const hidFile = (window.__deckHidden && typeof window.__deckHidden === 'object') ? window.__deckHidden : {};
+  const isHidden = id => { if (!id || !byId[id]) return false; if (id in hidSaved) return !!hidSaved[id]; if (id in hidFile) return !!hidFile[id]; return !!byId[id].hidden; };
+  const stepHidden = i => STEPS[i] && STEPS[i].kind === 'frame' && isHidden(STEPS[i].id) && STEPS[i].id !== STEPS[step].id;
+  function nextShown(i, dir) { for (let j = i; j >= 0 && j < STEPS.length; j += dir) if (!stepHidden(j)) return j; return -1; }
+  function setHidden(id, on) {
+    if (!SL.some(x => x.id === id)) return;
+    hidSaved[id] = !!on; try { localStorage.setItem(hidKey, JSON.stringify(hidSaved)); } catch (e) {}
+    if (SL.every(x => isHidden(x.id))) { hidSaved[id] = false; try { localStorage.setItem(hidKey, JSON.stringify(hidSaved)); } catch (e) {} toast('At least one slide has to stay visible.'); }
+    markHidden(); ui(); toast(isHidden(id) ? 'Slide hidden: it is skipped while you present.' : 'Slide shown again.');
+  }
+  function markHidden() { thumbs.forEach((t, n) => { const h = isHidden(SL[n].id); t.classList.toggle('hid', h); const b = t.querySelector('.eye'); if (b) { b.title = h ? 'Show this slide (H)' : 'Hide this slide while presenting (H)'; b.setAttribute('aria-pressed', String(h)); } }); }
+  let thumbs = [];
+  // copies of slides (thumbnails, print) live outside #stage: give them its variables (colours, fonts).
+  // Computed styles don't list custom properties, so collect the names from #stage's inline style and rules.
+  const STAGE_VARS = (() => { const names = new Set(); for (let i = 0; i < stage.style.length; i++) if (stage.style[i].startsWith('--')) names.add(stage.style[i]);
+    for (const sh of document.styleSheets) { let rules; try { rules = sh.cssRules; } catch (e) { continue; }
+      for (const r of rules) if (r.selectorText && /#stage/.test(r.selectorText)) for (let i = 0; i < r.style.length; i++) if (r.style[i].startsWith('--')) names.add(r.style[i]); }
+    for (const t of (D.themeList || [])) for (const n in (t.vars || {})) names.add(n);
+    return [...names]; })();
+  function stageVars(el) { const cs = getComputedStyle(stage); for (const n of STAGE_VARS) el.style.setProperty(n, cs.getPropertyValue(n));
+    el.style.color = cs.color; el.style.fontFamily = cs.fontFamily; if (SLIDES) el.classList.add('dk-slides'); }
+  function buildThumbs() {
+    for (const f of F) if (f.anim) scene(f, f.anim.beats || 0, REST);
+    side.innerHTML = ''; thumbs = SL.map((sl, n) => {
+      const f = byId[sl.id], d = document.createElement('div'); d.className = 'th'; d.title = label({ kind: 'frame', id: f.id, k: 0 });
+      // the box keeps the slide's shape at any panel width; scaleThumbs() fits the copy into it (also before the panel is laid out)
+      d.innerHTML = '<div class="n">' + (n + 1) + '</div><div class="dk-tbox" style="aspect-ratio:' + f.w + ' / ' + f.h + '"></div>';
+      const c = f.el.cloneNode(true); c.querySelectorAll('video').forEach(v => v.remove()); c.querySelectorAll('.dk-pts > li').forEach(li => { li.style.opacity = '1'; li.style.transform = 'none'; });
+      c.dataset.fw = f.w; c.classList.remove('dk-jump'); c.inert = true; c.querySelectorAll('iframe').forEach(x => x.remove()); kit.copyCanvases(f.el, c); stageVars(d.querySelector('.dk-tbox')); d.querySelector('.dk-tbox').append(c);
+      const eye = Object.assign(document.createElement('button'), { type: 'button', className: 'eye', innerHTML: '<svg viewBox="0 0 24 24" aria-hidden="true"><g class="on"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></g><g class="off"><path d="M3 3l18 18"/><path d="M10.6 5.1A10.4 10.4 0 0 1 12 5c6.4 0 10 7 10 7a17 17 0 0 1-3.2 4.1M6.6 6.6C3.9 8.3 2 12 2 12s3.6 7 10 7a9.7 9.7 0 0 0 5.4-1.6"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/></g></svg>' });
+      eye.setAttribute('aria-label', 'Hide or show this slide while presenting');
+      eye.onclick = e => { e.stopPropagation(); setHidden(sl.id, !isHidden(sl.id)); }; d.append(eye);
+      d.onclick = () => go(sl.i); side.append(d); return d; });
+    scaleThumbs(); markHidden();
+    draw(step, camOf(STEPS[step]), 99, true);
+  }
+  function scaleThumbs() { for (const d of thumbs) { const b = d.querySelector('.dk-tbox'), c = b && b.lastElementChild, w = b ? b.clientWidth : 0; if (c && w) c.style.transform = 'scale(' + (w / (+c.dataset.fw || DW)) + ')'; } }
+  if (window.ResizeObserver) new ResizeObserver(() => scaleThumbs()).observe(side);
+  try { const w = +localStorage.getItem('deck.sideW'); if (w >= 180 && w <= 480) document.documentElement.style.setProperty('--side-w', w + 'px'); } catch (e) {}
+  { const grip = $('sideGrip'); let dragging = false;
+    grip.addEventListener('pointerdown', e => { dragging = true; grip.classList.add('on'); grip.setPointerCapture(e.pointerId); e.preventDefault(); });
+    grip.addEventListener('pointermove', e => { if (!dragging) return; const w = Math.max(180, Math.min(480, Math.round(e.clientX))); document.documentElement.style.setProperty('--side-w', w + 'px'); fit(); });
+    grip.addEventListener('pointerup', () => { if (!dragging) return; dragging = false; grip.classList.remove('on');
+      try { localStorage.setItem('deck.sideW', String(side.clientWidth)); } catch (e) {} buildThumbs(); ui(); }); }
+  let sideWanted = cfg.panel !== false && SLIDES && innerWidth > 900, sideFull = false;
+  function setSide(open) { document.body.classList.toggle('side-open', !!open); $('sb').setAttribute('aria-pressed', String(!!open)); fit(); }
+  const sideOpen = () => document.fullscreenElement ? sideFull : sideWanted;
+  $('sb').onclick = () => { if (document.fullscreenElement) sideFull = !sideFull; else sideWanted = !sideWanted; setSide(sideOpen()); };
+  // entering full screen restarts the current slide's animation, so the audience sees it from the beginning
+  document.addEventListener('fullscreenchange', () => { sideFull = false; setSide(sideOpen()); if (document.fullscreenElement) setTimeout(replay, 120); });
+  // "Download this deck": the page exactly as built, one file that presents offline
+  const slug = x => String(x).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'deck';
+  const dlP = window.claude && typeof window.claude.use === 'function' ? Promise.resolve().then(() => window.claude.use('downloads')).catch(() => null) : Promise.resolve(null);
+  $('dl').onclick = async () => {
+    let html = window.__deckSource || '<!doctype html>\n' + document.documentElement.outerHTML; const name = slug(cfg.title) + '.html';
+    { const all = Object.assign({}, hidFile, hidSaved);   // hidden-slide choices travel with the saved copy
+      // (the marker is matched exactly and built in pieces, so neither step can touch this code's own text in the page)
+      html = html.replace(/<script id="dk-hidden">window\.__deckHidden=[^<]*<\/script>/, '');
+      if (Object.keys(all).length) html = html.replace(/<head[^>]*>/i, m => m + '<script id="dk-' + 'hidden">window.__deckHidden=' + JSON.stringify(all).replace(/</g, '\\u003c') + '<\/script>'); }
+    const d = await Promise.race([dlP, new Promise(r => setTimeout(() => r(null), 1500))]);
+    if (d) { try { await d.save({ filename: name, data: new Blob([html], { type: 'text/html' }) }); toast('Saved ' + name); return; } catch (e) { if (e && e.code === 'declined') { toast('Download cancelled.'); return; } } }
+    const u = URL.createObjectURL(new Blob([html], { type: 'text/html' })), a = document.createElement('a'); a.href = u; a.download = name; document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(u), 60000);
+    toast('Downloading ' + name);
+  };
+  // Print is blocked inside some embedded viewers (claude.ai artifacts); offer it only where it can work
+  const framed = (() => { try { return window.self !== window.top; } catch (e) { return true; } })();
+  if (framed) $('pr').style.display = 'none';
+  // "Print / PDF": every slide on its own page, at its final state
+  $('pr').onclick = () => {
+    const box = $('print'); box.innerHTML = '';
+    for (const f of F) if (f.anim) scene(f, f.anim.beats || 0, REST);
+    for (const sl of SL) { if (isHidden(sl.id)) continue; const f = byId[sl.id], pg = document.createElement('div'); pg.className = 'pslide'; pg.style.background = cfg.background; stageVars(pg);
+      const c = f.el.cloneNode(true); c.querySelectorAll('video').forEach(v => v.remove()); c.querySelectorAll('.dk-pts > li').forEach(li => { li.style.opacity = '1'; li.style.transform = 'none'; });
+      const pw = 16 * 96, ph = 9 * 96, sc = Math.min(pw / DW, ph / (DW * f.h / f.w)); c.style.transform = 'translate(' + ((pw - DW * sc) / 2) + 'px,' + ((ph - DW * f.h / f.w * sc) / 2) + 'px) scale(' + sc + ')';
+      c.inert = true; c.querySelectorAll('iframe').forEach(x => x.remove()); kit.copyCanvases(f.el, c); pg.append(c); box.append(pg); }
+    draw(step, camOf(STEPS[step]), 99, true);
+    try { window.print(); } catch (e) { toast('Printing is blocked here. Download the deck and print from the file.'); }
+  };
+  function ui() {
+    const sn = slideOf(step);
+    const shown = SL.filter(x => !isHidden(x.id));
+    count.textContent = SLIDES && sn >= 0 ? (isHidden(SL[sn].id) ? 'Hidden · ' + (sn + 1) : (shown.findIndex(x => x.id === SL[sn].id) + 1) + ' / ' + shown.length) : (step + 1) + ' / ' + STEPS.length;
+    const cf = STEPS[step].kind === 'frame' ? byId[STEPS[step].id] : null, nb = cf ? reveals(cf) : 0;
+
+    thumbs.forEach((t, n) => t.classList.toggle('on', n === sn)); if (thumbs[sn] && side.offsetParent) thumbs[sn].scrollIntoView({ block: 'nearest' });
+    const fr = STEPS[step].kind === 'frame' ? byId[STEPS[step].id] : null, can = !!(fr && (fr.anim || fr.vid));
+    $('pp').style.display = $('rp').style.display = can ? '' : 'none'; $('pp').setAttribute('aria-pressed', String(!!(anim && anim.paused)));
+    $('ov').setAttribute('aria-pressed', String(peek));
+    const s = STEPS[step]; $('noteText').textContent = ((s.kind === 'overview' ? cfg.notes : byId[s.id].notes) || '—') +
+      (s.kind === 'frame' && byId[s.id].interactive ? '\n\n(Interactive: after using a control, press Esc before → to move on.)' : '') +
+      (s.kind === 'frame' && byId[s.id].youtube ? '\n\n(Video: after clicking the player, click outside it to get the arrow keys back.)' : '');
+    { const nx = nextShown(step + 1, 1); $('nextText').textContent = nx >= 0 ? label(STEPS[nx]) : 'End'; }
+    F.forEach(f => f.el.classList.toggle('dk-jump', peek || STEPS[step].kind === 'overview'));
+  }
+  setInterval(() => { if (t0 == null) return; const s = Math.floor((performance.now() - t0) / 1000); $('timer').textContent = Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); }, 500);
+  const next = () => { if (peek) return togglePeek(false); const j = nextShown(step + 1, 1); if (j >= 0) go(j); },
+    prev = () => { if (peek) return togglePeek(false); const j = nextShown(step - 1, -1); if (j >= 0) go(j); };
+  $('next').onclick = next; $('prev').onclick = prev; $('ov').onclick = () => togglePeek();
+  $('snd').onclick = () => { vidSound = !vidSound; videos(step); };
+  $('pp').onclick = () => pauseAnim(); $('rp').onclick = () => replay();
+  $('nt').onclick = () => { const o = !notes.classList.contains('open'); notes.classList.toggle('open', o); document.body.classList.toggle('notes-open', o); $('nt').setAttribute('aria-pressed', String(o)); fit(); };
+  if (SLIDES && !cfg.overview) $('ov').style.display = 'none';
+  const fullBtn = $('full'); if (!document.fullscreenEnabled) fullBtn.style.display = 'none';
+  fullBtn.onclick = () => { if (document.fullscreenElement) document.exitFullscreen(); else document.documentElement.requestFullscreen().catch(() => toast('Full screen is not allowed here.')); };
+  // themes: the picker recolours the whole deck live (slides, drawings, thumbnails, print); the choice is remembered
+  const TH = D.themeList || [], thBtn = $('thm'), thKey = 'deck.theme:' + (cfg.title || ''), bg0 = cfg.background;
+  let thCur = 0, thSet = [];
+  const thPickEl = document.createElement('div'); thPickEl.id = 'thPick'; thPickEl.setAttribute('role', 'menu');
+  { const h = document.createElement('div'); h.className = 'nh'; h.textContent = 'Theme'; thPickEl.append(h); }
+  TH.forEach((t, i) => { const b = document.createElement('button'); b.setAttribute('role', 'menuitemradio'); const sw = document.createElement('span'); sw.className = 'sw';
+    for (const c of (t.swatch || ['--ground', '--main', '--ink', '--accent'].map(n => (t.vars || {})[n]))) { if (!c) continue; const d = document.createElement('i'); d.style.background = c; sw.append(d); }
+    const nm = document.createElement('span'); nm.textContent = t.name || 'Theme ' + (i + 1); b.append(sw, nm); b.onclick = e => { e.stopPropagation(); applyTheme(i, true); pickOpen(false); }; thPickEl.append(b); });
+  document.body.append(thPickEl);
+  function applyTheme(i, rebuild) {
+    const t = TH[i]; if (!t) return; thCur = i;
+    for (const n of thSet) stage.style.removeProperty(n); thSet = Object.keys(t.vars || {});
+    for (const n of thSet) stage.style.setProperty(n, t.vars[n]);
+    const bg = t.background || (t.vars || {})['--ground'] || bg0; cfg.background = bg; stage.style.background = bg; $('app').style.setProperty('--deck-outer', bg);
+    [...thPickEl.querySelectorAll('button')].forEach((b, j) => { b.classList.toggle('on', j === i); b.setAttribute('aria-checked', String(j === i)); });
+    try { localStorage.setItem(thKey, String(i)); } catch (e) {}
+    if (rebuild && !RENDER) buildThumbs();
+  }
+  function pickOpen(o) { thPickEl.classList.toggle('open', o); thBtn.setAttribute('aria-expanded', String(o));
+    if (o) { const r = thBtn.getBoundingClientRect(); thPickEl.style.left = Math.max(8, Math.min(innerWidth - 268, r.left + r.width / 2 - 130)) + 'px'; thPickEl.style.bottom = (innerHeight - r.top + 10) + 'px';
+      const on = thPickEl.querySelector('button.on') || thPickEl.querySelector('button'); if (on) on.focus(); } }
+  if (TH.length > 1) {
+    thBtn.style.display = ''; thBtn.onclick = e => { e.stopPropagation(); pickOpen(!thPickEl.classList.contains('open')); };
+    document.addEventListener('click', e => { if (!thPickEl.contains(e.target)) pickOpen(false); });
+    let want = 0; try { want = +localStorage.getItem(thKey) || 0; } catch (e) {}
+    const q = /[?&]theme=(\d+)/.exec(location.search); if (q) want = +q[1];
+    if (want > 0 && want < TH.length) applyTheme(want, false); else applyTheme(0, false);
+  }
+  // audience levels: one deck, a version per level; switching reloads the deck in that level and keeps your place
+  const LV = D.levelList || [], lvBtn = $('lvl'), lvKey = 'deck.level:' + (cfg.title || '');
+  const lvPickEl = document.createElement('div'); lvPickEl.id = 'lvPick'; lvPickEl.setAttribute('role', 'menu');
+  { const h = document.createElement('div'); h.className = 'nh'; h.textContent = 'Audience level'; lvPickEl.append(h); }
+  LV.forEach(l => { const b = document.createElement('button'); b.setAttribute('role', 'menuitemradio'); b.setAttribute('aria-checked', String(l.id === D.level)); if (l.id === D.level) b.classList.add('on');
+    const nm = document.createElement('span'); nm.textContent = l.name || l.id; b.append(nm);
+    if (l.duration) { const du = document.createElement('span'); du.className = 'du'; du.textContent = l.duration; b.append(du); }
+    b.onclick = e => { e.stopPropagation(); lvOpen(false); if (l.id === D.level) return;
+      try { localStorage.setItem(lvKey, l.id); } catch (er) {}
+      try { const st = STEPS[step]; if (st && st.kind === 'frame') sessionStorage.setItem('deck.goto', st.id); } catch (er) {}
+      const u = new URL(location.href); u.searchParams.set('level', l.id); u.hash = ''; location.replace(u.href); };
+    lvPickEl.append(b); });
+  document.body.append(lvPickEl);
+  function lvOpen(o) { lvPickEl.classList.toggle('open', o); lvBtn.setAttribute('aria-expanded', String(o));
+    if (o) { const r = lvBtn.getBoundingClientRect(); lvPickEl.style.left = Math.max(8, Math.min(innerWidth - 268, r.left + r.width / 2 - 130)) + 'px'; lvPickEl.style.bottom = (innerHeight - r.top + 10) + 'px';
+      const on = lvPickEl.querySelector('button.on') || lvPickEl.querySelector('button'); if (on) on.focus(); } }
+  if (LV.length > 1) {
+    const cur = LV.find(l => l.id === D.level) || LV[0];
+    lvBtn.textContent = cur.name || cur.id; lvBtn.style.display = ''; lvBtn.onclick = e => { e.stopPropagation(); lvOpen(!lvPickEl.classList.contains('open')); };
+    document.addEventListener('click', e => { if (!lvPickEl.contains(e.target)) lvOpen(false); });
+    try { localStorage.setItem(lvKey, D.level); } catch (e) {}
+  }
+  // code languages: like levels, switching reloads the deck in that language and keeps your place
+  const LG = D.langList || [], lgBtn = $('lng'), lgKey = 'deck.lang:' + (cfg.title || '');
+  const lgPickEl = document.createElement('div'); lgPickEl.id = 'lgPick'; lgPickEl.setAttribute('role', 'menu');
+  const LG_LABEL = cfg.langLabel || 'Language';   // Deck.config({ langLabel: 'Cloud' }) renames the picker
+  { const h = document.createElement('div'); h.className = 'nh'; h.textContent = cfg.langLabel ? LG_LABEL : 'Code samples in'; lgPickEl.append(h); }
+  if (cfg.langLabel) { lgBtn.setAttribute('aria-label', LG_LABEL + ' (G)'); lgBtn.title = LG_LABEL + ' (G)'; }
+  LG.forEach(l => { const b = document.createElement('button'); b.setAttribute('role', 'menuitemradio'); b.setAttribute('aria-checked', String(l.id === D.lang)); if (l.id === D.lang) b.classList.add('on');
+    const nm = document.createElement('span'); nm.textContent = l.name || l.id; b.append(nm);
+    b.onclick = e => { e.stopPropagation(); lgOpen(false); if (l.id === D.lang) return;
+      try { localStorage.setItem(lgKey, l.id); } catch (er) {}
+      try { const st = STEPS[step]; if (st && st.kind === 'frame') sessionStorage.setItem('deck.goto', st.id); } catch (er) {}
+      const u = new URL(location.href); u.searchParams.set('lang', l.id); u.hash = ''; location.replace(u.href); };
+    lgPickEl.append(b); });
+  document.body.append(lgPickEl);
+  function lgOpen(o) { lgPickEl.classList.toggle('open', o); lgBtn.setAttribute('aria-expanded', String(o));
+    if (o) { const r = lgBtn.getBoundingClientRect(); lgPickEl.style.left = Math.max(8, Math.min(innerWidth - 268, r.left + r.width / 2 - 130)) + 'px'; lgPickEl.style.bottom = (innerHeight - r.top + 10) + 'px';
+      const on = lgPickEl.querySelector('button.on') || lgPickEl.querySelector('button'); if (on) on.focus(); } }
+  if (LG.length > 1) {
+    const cur = LG.find(l => l.id === D.lang) || LG[0];
+    lgBtn.textContent = cur.name || cur.id; lgBtn.style.display = ''; lgBtn.onclick = e => { e.stopPropagation(); lgOpen(!lgPickEl.classList.contains('open')); };
+    document.addEventListener('click', e => { if (!lgPickEl.contains(e.target)) lgOpen(false); });
+    try { localStorage.setItem(lgKey, D.lang); } catch (e) {}
+  }
+  // ---- the terminal drawer: real shells from the presenter kit (serve.ps1 / serve.py), shown with xterm.js, one per tab ----
+  // The kit opens the deck at ?tk=<one-time key> and serves xterm from _present/term/. Opened as a plain file, the drawer explains that.
+  const termEl = $('term'), termBtn = $('tmb'), termScr = termEl.querySelector('.scr'), tabsEl = termEl.querySelector('.tabs'), TK = new URLSearchParams(location.search).get('tk');
+  const termOn = !!cfg.terminal;   // a deck opts in with Deck.config({ terminal: true }); without it: no drawer, no button, no ` key
+  const termOK = termOn && !!TK && /^https?:$/.test(location.protocol);
+  // ---- panel themes (terminal, browser panel, workbench): Dark, Light, High contrast; remembered on this computer ----
+  const CH = ['dark', 'light', 'hc'], CH_NAME = { dark: 'Dark', light: 'Light', hc: 'High contrast' };
+  const CH_XT = {
+    dark: { background: '#0d1015', foreground: '#e6e9ef', cursor: '#e8a33d', selectionBackground: 'rgba(232,163,61,.35)' },
+    light: { background: '#ffffff', foreground: '#1f2328', cursor: '#b46b00', cursorAccent: '#ffffff', selectionBackground: 'rgba(180,107,0,.28)',
+      black: '#24292f', red: '#cf222e', green: '#116329', yellow: '#7d4e00', blue: '#0969da', magenta: '#8250df', cyan: '#1b7c83', white: '#6e7781',
+      brightBlack: '#57606a', brightRed: '#a40e26', brightGreen: '#1a7f37', brightYellow: '#633c01', brightBlue: '#218bff', brightMagenta: '#a475f9', brightCyan: '#3192aa', brightWhite: '#8c959f' },
+    hc: { background: '#000000', foreground: '#ffffff', cursor: '#ffd23f', selectionBackground: 'rgba(255,210,63,.45)', brightBlack: '#bfbfbf' } };
+  const CH_MONACO = { dark: 'vs-dark', light: 'vs', hc: 'hc-black' };
+  let chCur = 'dark'; try { const v = localStorage.getItem('deck.chrome'); if (CH.includes(v)) chCur = v; } catch (e) {}
+  function chApply(v) {
+    chCur = v; document.body.classList.toggle('ch-light', v === 'light'); document.body.classList.toggle('ch-hc', v === 'hc');
+    try { TT.tabs.forEach(t => { try { t.xt.options.theme = CH_XT[v]; } catch (e) {} }); } catch (e) {}   // TT does not exist yet on the first call
+    try { if (window.monaco) window.monaco.editor.setTheme(CH_MONACO[v]); } catch (e) {}
+    document.querySelectorAll('[data-a="chrome"]').forEach(b => { b.title = 'Panel theme: ' + CH_NAME[v] + ' (click for ' + CH_NAME[CH[(CH.indexOf(v) + 1) % CH.length]] + ')'; });
+  }
+  function chNext() { const v = CH[(CH.indexOf(chCur) + 1) % CH.length]; chApply(v); try { localStorage.setItem('deck.chrome', v); } catch (e) {} if (typeof toast === 'function') toast('Panel theme: ' + CH_NAME[v]); }
+  chApply(chCur);
+  const TT = { tabs: [], cur: null, loading: null, fs: 17, n: 0 };
+  try { TT.fs = Math.min(32, Math.max(11, +localStorage.getItem('deck-term-fs') || 17)); } catch (e) {}
+  if (termOK) { termBtn.style.display = ''; document.body.classList.add('term-ok'); }
+  const dim = s => '\r\n\x1b[2m' + s + '\x1b[0m\r\n', red = s => '\r\n\x1b[31m' + s + '\x1b[0m\r\n';
+  const termMsg = html => { termScr.querySelectorAll('.msg').forEach(m => m.remove()); TT.tabs.forEach(t => { t.el.style.display = 'none'; }); termScr.insertAdjacentHTML('beforeend', '<div class="msg">' + html + '</div>'); };
+  function termLoad() {
+    if (TT.loading) return TT.loading;
+    const add = (tag, attrs) => new Promise((ok, no) => { const n = Object.assign(document.createElement(tag), attrs); n.onload = ok; n.onerror = () => no(new Error('Could not load ' + (attrs.src || attrs.href) + ' from the launcher.')); document.head.append(n); });
+    return TT.loading = add('link', { rel: 'stylesheet', href: '_present/term/xterm.css' })
+      .then(() => add('script', { src: '_present/term/xterm.js' })).then(() => add('script', { src: '_present/term/addon-fit.js' }))
+      .catch(err => { TT.loading = null; throw err; });
+  }
+  function tabState(t, st) { t.state = st; t.tabEl.classList.toggle('live', st === 'live'); t.tabEl.classList.toggle('dead', st === 'dead'); }
+  function tabNew() {
+    const mono = (getComputedStyle(stage).getPropertyValue('--mono') || '').trim();
+    const t = { id: ++TT.n, el: document.createElement('div'), xt: null, fit: null, ws: null, queue: [], state: '', title: '' };
+    t.el.style.height = '100%'; termScr.querySelectorAll('.msg').forEach(m => m.remove()); termScr.append(t.el);
+    t.tabEl = Object.assign(document.createElement('div'), { className: 'tab', role: 'tab', innerHTML: '<i class="d"></i><span class="t"></span><span class="x" role="button" aria-label="Close this terminal" title="Close (Ctrl+Shift+W)">×</span>' });
+    t.tabEl.querySelector('.t').textContent = 'Terminal ' + t.id;
+    t.tabEl.onclick = e => { if (e.target.closest('.x')) tabClose(t); else tabShow(t); };
+    tabsEl.append(t.tabEl);
+    const xt = t.xt = new window.Terminal({ fontSize: TT.fs, fontFamily: (mono ? mono + ', ' : '') + '"Cascadia Mono", Consolas, "SF Mono", Menlo, "DejaVu Sans Mono", monospace',
+      cursorBlink: !matchMedia('(prefers-reduced-motion: reduce)').matches, scrollback: 5000,
+      theme: CH_XT[chCur] });
+    t.fit = new window.FitAddon.FitAddon(); xt.loadAddon(t.fit); xt.open(t.el);
+    // Ctrl+` hides the drawer; Ctrl+Shift+T / W open and close tabs; Ctrl+PageUp/PageDown switch. Every other key belongs to the shell.
+    xt.attachCustomKeyEventHandler(e => {
+      if (e.type !== 'keydown' || !e.ctrlKey) return true;
+      const k = e.key.toLowerCase();
+      if (e.code === 'Backquote') { e.preventDefault(); termShow(false); return false; }
+      if (e.shiftKey && k === 't') { e.preventDefault(); tabShow(tabNew()); return false; }
+      if (e.shiftKey && k === 'w') { e.preventDefault(); tabClose(t); return false; }
+      if (e.key === 'PageDown' || e.key === 'PageUp') { e.preventDefault(); const i = TT.tabs.indexOf(t), n = TT.tabs.length; tabShow(TT.tabs[(i + (e.key === 'PageDown' ? 1 : -1) + n) % n]); return false; }
+      return true;
+    });
+    xt.onData(d => { if (t.ws && t.ws.readyState === 1) t.ws.send('0' + d); else if (d === '\r' && t.state !== 'connecting') tabConnect(t); });
+    xt.onResize(({ cols, rows }) => { if (t.ws && t.ws.readyState === 1) t.ws.send('1' + cols + ',' + rows); });
+    xt.onTitleChange(s => { const name = (s || '').split(/[\\/]/).pop().replace(/\.exe$/i, '') || 'Terminal ' + t.id; t.tabEl.querySelector('.t').textContent = name + ' ' + t.id; t.tabEl.title = s; });
+    new ResizeObserver(() => { if (TT.cur === t && termEl.classList.contains('open')) try { t.fit.fit(); } catch (e) {} }).observe(t.el);
+    TT.tabs.push(t); return t;
+  }
+  function tabShow(t) {
+    if (!t) return; TT.cur = t;
+    TT.tabs.forEach(o => { const on = o === t; o.el.style.display = on ? '' : 'none'; o.tabEl.classList.toggle('on', on); o.tabEl.setAttribute('aria-selected', String(on)); });
+    requestAnimationFrame(() => { try { t.fit.fit(); } catch (e) {} if (!t.ws) tabConnect(t); t.xt.focus(); });
+  }
+  function tabClose(t) {
+    const i = TT.tabs.indexOf(t); if (i < 0) return;
+    const w = t.ws; t.ws = null; if (w) try { w.close(); } catch (e) {}   // the launcher ends that shell
+    t.xt.dispose(); t.el.remove(); t.tabEl.remove(); TT.tabs.splice(i, 1);
+    if (!TT.tabs.length) { TT.cur = null; termShow(false); return; }
+    if (TT.cur === t) tabShow(TT.tabs[Math.min(i, TT.tabs.length - 1)]);
+  }
+  function tabConnect(t) {
+    if (t.ws && t.ws.readyState <= 1) return;
+    try { t.fit.fit(); } catch (e) {}
+    tabState(t, 'connecting'); let opened = false;
+    const ws = t.ws = new WebSocket('ws://' + location.host + '/__term?tk=' + encodeURIComponent(TK) + '&cols=' + t.xt.cols + '&rows=' + t.xt.rows);
+    ws.binaryType = 'arraybuffer';
+    ws.onopen = () => { opened = true; tabState(t, 'live'); t.queue.splice(0).forEach(q => ws.send('0' + q)); };
+    ws.onmessage = e => { if (typeof e.data === 'string') t.xt.write(red(e.data)); else t.xt.write(new Uint8Array(e.data)); };   // text frames are the launcher's error messages
+    ws.onerror = () => {};
+    ws.onclose = () => {
+      if (t.ws !== ws) return; tabState(t, 'dead');
+      t.xt.write(opened ? dim('[the shell has ended: press Enter for a new one]')
+        : red('Could not reach the shell. Its launcher has stopped (the console window that Present (Windows).cmd opened must stay open while you present).') + dim('Start the deck again with its launcher, or press Enter to retry.'));
+    };
+  }
+  async function termShow(on) {
+    if (termEl.classList.contains('inwb')) {   // inside the workbench: ` goes to the terminal, Ctrl+` (or hide) back to the editor
+      if (on === false || (on == null && termEl.contains(document.activeElement))) { if (WB.editor) WB.editor.focus(); else document.activeElement.blur(); }
+      else if (TT.cur) TT.cur.xt.focus();
+      return;
+    }
+    on = on == null ? !termEl.classList.contains('open') : on;
+    if (on && webp.classList.contains('open')) panelShow(false);   // one drawer at a time
+    termEl.classList.toggle('open', on); document.body.classList.toggle('term-open', on || webp.classList.contains('open')); termBtn.setAttribute('aria-pressed', String(on)); fit();
+    if (!on) { if (termEl.contains(document.activeElement)) document.activeElement.blur(); return; }
+    if (!termOK) {
+      termMsg('<b>The terminal opens a real shell, so it needs the presenter kit.</b><br>Start the deck with <b>Present (Windows).cmd</b>, <b>Present (Mac).command</b> or <b>Present (Linux).sh</b> (made by the skill\'s kit.py), then press ` again.');
+      return;
+    }
+    try { await termLoad(); } catch (err) {
+      termMsg('<b>The terminal could not start.</b><br>' + String(err.message || err).replace(/</g, '&lt;') + '<br>Is the launcher\'s console window still open? Start the deck again with its launcher.');
+      return;
+    }
+    tabShow(TT.cur || tabNew());
+  }
+  // type text into the current shell, without pressing Enter: the presenter presses it (data-send="…" on a slide, or kit.term.send)
+  async function termSend(text) {
+    if (!termOK) { toast('The terminal needs the presenter kit: start the deck with its Present launcher.'); return; }
+    await termShow(true); const t = TT.cur; if (!t) return;
+    if (t.ws && t.ws.readyState === 1) t.ws.send('0' + text); else { t.queue.push(text); tabConnect(t); }
+    t.xt.focus();
+  }
+  kit.term = { send: termSend, show: () => termShow(true), hide: () => termShow(false), newTab: () => termShow(true).then(() => { if (window.Terminal) tabShow(tabNew()); }), get available() { return termOK; },
+    get tabs() { return TT.tabs.map(t => ({ id: t.id, on: t === TT.cur, state: t.state, ws: t.ws ? t.ws.readyState : -1, cols: t.xt.cols, rows: t.xt.rows })); } };
+  termBtn.onclick = e => { e.stopPropagation(); termShow(); };
+  termEl.querySelector('.tb').addEventListener('click', e => {
+    const b = e.target.closest('button'), a = b && b.dataset.a; if (!a) return;
+    const t = TT.cur;
+    if (a === 'hide') return termShow(false);
+    if (a === 'panel') { $('sb').click(); return; }
+    if (a === 'chrome') { chNext(); return; }
+    if (a === 'new') { if (window.Terminal) tabShow(tabNew()); else termShow(true); return; }
+    if (a === 'size') termEl.classList.toggle('full');
+    else if (a === 'bigger' || a === 'smaller') { TT.fs = Math.min(32, Math.max(11, TT.fs + (a === 'bigger' ? 2 : -2))); try { localStorage.setItem('deck-term-fs', TT.fs); } catch (e2) {}
+      TT.tabs.forEach(o => { o.xt.options.fontSize = TT.fs; }); if (t) try { t.fit.fit(); } catch (e2) {} }
+    else if (a === 'restart' && t) { const w = t.ws; t.ws = null; if (w) try { w.close(); } catch (e2) {} t.xt.reset(); tabConnect(t); }
+    if (t) t.xt.focus();
+  });
+  if (termOn) stage.addEventListener('click', e => { if (e.target.closest && e.target.closest('[data-open]')) return; const el = e.target.closest && e.target.closest('[data-send]'); if (el) { e.stopPropagation(); termSend(el.getAttribute('data-send')); } }, true);
+  // ---- the browser: pages open in the presenter's own browser (profile, sign-ins, tabs), beside the deck ----
+  // With the presenter kit the launcher opens a new window of their default browser and, on Windows, puts the deck on the left
+  // and the browser on the right; B or "Deck full screen" gives the deck the whole screen again. Opened as a plain file, pages open in a new tab.
+  const webOn = !!cfg.browser, webBtn = $('web'), webPick = $('webPick'), webUrl = $('webUrl');
+  const webKit = webOn && !!TK && /^https?:$/.test(location.protocol);
+  let webLast = (cfg.browser && cfg.browser.home) || '', webSplit = false;
+  if (webOn) { webBtn.style.display = ''; document.body.classList.add('web-on'); }
+  $('webNote').textContent = 'Local apps (localhost, *.local) open under the slide. ' + (webKit ? 'Websites open in your own browser, beside the deck.' : 'Websites open in a new tab (with the launcher: beside the deck).');
+  const webFix = u => { u = String(u || '').trim(); if (!u) return ''; if (/^(localhost|127\.0\.0\.1|\[::1\])(:\d+)?(\/|$)/i.test(u)) return 'http://' + u; if (!/^https?:\/\//i.test(u)) return 'https://' + u; return u; };
+  // local apps (localhost, 127.0.0.1, *.localhost, *.local) open in the panel under the slide; other sites refuse to be shown
+  // inside another page, so they open in the presenter's own browser, beside the deck
+  const webp = $('webp'), webFrame = webp.querySelector('iframe'), webAddr = webp.querySelector('input');
+  // Back: the panel's pages (opened here or by clicking inside) are entries in this window's history; count them, and step back
+  // through the browser's own history only while there are some (so Back never leaves the deck)
+  let webLoads = 0, webBack = false;
+  webFrame.addEventListener('load', () => { if (!webFrame.getAttribute('src')) return; if (webBack) webBack = false; else webLoads++; });
+  const isLocal = u => /^https?:\/\/(localhost|127\.0\.0\.1|\[::1\]|[\w.-]+\.localhost|[\w.-]+\.local)(:\d+)?(\/|$)/i.test(u);
+  function panelShow(on) {
+    webp.classList.toggle('open', on); document.body.classList.toggle('term-open', on || termEl.classList.contains('open')); fit();
+    if (!on && webp.contains(document.activeElement)) document.activeElement.blur();
+  }
+  function panelGo(u) {
+    if (wbEl.classList.contains('open')) wbShow(false);   // one drawer at a time
+    if (termEl.classList.contains('open')) termShow(false);
+    webAddr.value = u; webFrame.setAttribute('src', u);
+    panelShow(true);
+  }
+  webp.querySelector('.wb').addEventListener('click', e => {
+    const b = e.target.closest('button'), a = b && b.dataset.a; if (!a) return;
+    if (a === 'hide') panelShow(false);
+    else if (a === 'panel') $('sb').click();
+    else if (a === 'chrome') chNext();
+    else if (a === 'reload') { webBack = webLoads <= 1; webFrame.src = webFrame.getAttribute('src'); }   // the address in the bar (a page the app moved to can't be read from here)
+    else if (a === 'back') { if (webLoads > 1) { webLoads--; webBack = true; history.back(); } }
+    else if (a === 'size') webp.classList.toggle('full');
+    else if (a === 'beside') { const u = webFrame.getAttribute('src'); panelShow(false); webOpen(u, true); }
+  });
+  webp.querySelector('form').onsubmit = e => { e.preventDefault(); webOpen(webAddr.value); };
+  webAddr.addEventListener('keydown', e => { if (e.key === 'Escape') { e.preventDefault(); webAddr.blur(); } });
+  async function webOpen(u, beside) {
+    u = webFix(u); if (!u) return; webLast = u; webPickOpen(false);
+    if (isLocal(u) && !beside) { panelGo(u); return; }
+    if (!webKit) { window.open(u, '_blank', 'noopener'); return; }
+    if (document.fullscreenElement) { try { await document.exitFullscreen(); } catch (e) {} }   // the deck has to be a window to share the screen
+    try { const r = await fetch('/__open?tk=' + encodeURIComponent(TK) + '&url=' + encodeURIComponent(u));
+      if (r.status === 501) { window.open(u, '_blank', 'noopener'); return; }   // the deck runs on a remote machine: a new tab here
+      if (!r.ok) throw new Error(r.status);
+      webSplit = true; let host = u; try { host = new URL(u).host; } catch (e) {} toast('Opening ' + host + ' beside the deck. B gives the deck the full screen again.'); }
+    catch (e) { toast('The launcher is not answering: opening in a new tab instead.'); window.open(u, '_blank', 'noopener'); }
+  }
+  function webFull() { webPickOpen(false); webSplit = false; if (webKit) fetch('/__deckfull?tk=' + encodeURIComponent(TK)).catch(() => {}); }
+  function webPickOpen(on) {
+    on = on == null ? !webPick.classList.contains('open') : on;
+    if (on) { const r = webBtn.getBoundingClientRect(), w = webPick.offsetWidth || 520; webPick.style.left = Math.max(16, Math.min(innerWidth - w - 16, r.left + r.width / 2 - w / 2)) + 'px'; webPick.style.bottom = (innerHeight - r.top + 10) + 'px';
+      webUrl.value = webLast; $('webFull').style.display = webKit && webSplit ? '' : 'none'; }
+    webPick.classList.toggle('open', on); if (on) setTimeout(() => { webUrl.focus(); webUrl.select(); }, 0);
+  }
+  webBtn.onclick = e => { e.stopPropagation(); webPickOpen(); };
+  webPick.querySelector('form').onsubmit = e => { e.preventDefault(); webOpen(webUrl.value); };
+  $('webFull').onclick = () => webFull();
+  webUrl.addEventListener('keydown', e => { if (e.key === 'Escape') { e.preventDefault(); webPickOpen(false); } });
+  document.addEventListener('click', e => { if (webPick.classList.contains('open') && !webPick.contains(e.target) && e.target !== webBtn && !webBtn.contains(e.target)) webPickOpen(false); });
+  if (webOn) stage.addEventListener('click', e => { const el = e.target.closest && e.target.closest('[data-open]'); if (el) { e.stopPropagation(); webOpen(el.getAttribute('data-open')); } }, true);
+  kit.web = { open: webOpen, full: webFull, get available() { return webOn; }, get beside() { return webKit; } };
+  // ---- the workbench: the demo folder's files, a VS Code-like editor (Monaco) and the terminal, under the slide ----
+  // With the presenter kit the launcher serves one demo folder (workspace.txt) at /__fs/…; opened as a plain file, it explains that.
+  const wbOn = !!cfg.workbench, wbEl = $('wb'), wbBtn = $('wbb'), wbKit = wbOn && !!TK && /^https?:$/.test(location.protocol);
+  const wbTree = wbEl.querySelector('.wtree'), wbTabs = wbEl.querySelector('.wtabs'), wbEd = wbEl.querySelector('.wed'), wbTerm = wbEl.querySelector('.wterm');
+  const WB = { entries: [], git: {}, open: [], cur: null, editor: null, monaco: null, loading: null, exp: new Set(), sel: '', timer: 0, root: '' };
+  if (wbOn) { wbBtn.style.display = ''; document.body.classList.add('wb-on'); }
+  const wbIcon = d => '<svg viewBox="0 0 24 24" aria-hidden="true">' + d + '</svg>';
+  const wbEsc = x => String(x).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+  const wbMsg = (host, html) => { host.querySelectorAll('.wmsg').forEach(m => m.remove()); if (html) host.insertAdjacentHTML('beforeend', '<div class="wmsg"><div>' + html + '</div></div>'); };
+  async function wbApi(op, params, body) {
+    const q = '/__fs/' + op + '?tk=' + encodeURIComponent(TK) + (params ? '&' + params : '');
+    const r = await fetch(q, body === undefined ? {} : { method: 'POST', body });
+    if (!r.ok) { const t = await r.text().catch(() => ''); throw new Error(t || ('The launcher answered ' + r.status)); }
+    return r;
+  }
+  const P = x => 'path=' + encodeURIComponent(x);
+  // one refresh at a time: they never pile up in front of a save or a new file
+  async function wbRefresh() {
+    if (WB.refreshing) return WB.refreshing;
+    WB.refreshing = wbRefresh1().finally(() => { WB.refreshing = null; });
+    return WB.refreshing;
+  }
+  async function wbRefresh1() {
+    try {
+      const j = await (await wbApi('list')).json(); WB.entries = j.entries; WB.root = j.root; wbEl.querySelector('.wpath').textContent = j.root;
+      const g = await (await wbApi('git')).text(); WB.git = {};
+      g.split('\n').forEach(l => { if (l.length < 4) return; const xy = l.slice(0, 2), f = l.slice(3).replace(/^"|"$/g, '').split(' -> ').pop();
+        WB.git[f] = xy === '??' ? 'U' : /D/.test(xy) ? 'D' : /A/.test(xy) ? 'A' : 'M'; });
+      wbDrawTree();
+      for (const o of WB.open) {   // a file changed on disk (by the terminal, by a build): reload it unless it has unsaved edits
+        const e = WB.entries.find(x => x.p === o.path);
+        if (e && o.mtime && e.m !== o.mtime && o.model.getAlternativeVersionId() === o.saved) {
+          try { const r = await wbApi('read', P(o.path)); const t = await r.text(); o.mtime = +r.headers.get('X-Mtime') || e.m; if (t !== o.model.getValue()) { o.model.setValue(t); o.saved = o.model.getAlternativeVersionId(); } } catch (er) {}
+        }
+      }
+      wbDrawTabs();
+    } catch (err) { wbTree.innerHTML = '<div class="wmsg" style="position:static"><div>' + wbEsc(err.message) + '<br>Is the launcher\'s console window still open?</div></div>'; }
+  }
+  function wbDrawTree(force) {
+    const sig = JSON.stringify([WB.entries.map(e => e.p + (e.d ? '/' : '')), WB.git, [...WB.exp], WB.cur && WB.cur.path, WB.sel]);
+    if (!force && sig === WB.treeSig) return; WB.treeSig = sig;
+    const kids = {}; WB.entries.forEach(e => { const i = e.p.lastIndexOf('/'), dir = i < 0 ? '' : e.p.slice(0, i); (kids[dir] = kids[dir] || []).push(e); });
+    const changedUnder = d => Object.keys(WB.git).some(f => f.startsWith(d + '/'));
+    const sorted = d => (kids[d] || []).sort((a, b) => (b.d - a.d) || a.p.localeCompare(b.p));
+    let h = '';
+    const walk = (dir, depth) => sorted(dir).forEach(e => {
+      const name = e.p.slice(e.p.lastIndexOf('/') + 1), gs = e.d ? (changedUnder(e.p) ? '<span class="gs dot">●</span>' : '') : (WB.git[e.p] ? '<span class="gs ' + WB.git[e.p] + '">' + WB.git[e.p] + '</span>' : '');
+      const open = WB.exp.has(e.p), on = WB.cur && WB.cur.path === e.p;
+      h += '<div class="r' + (on ? ' on' : '') + (!on && WB.sel === e.p ? ' sel' : '') + (WB.hov === e.p ? ' hov' : '') + '" role="treeitem" data-p="' + wbEsc(e.p) + '" data-d="' + e.d + '" style="padding-left:' + (10 + depth * 14) + 'px"><span class="ic">' + (e.d ? (open ? '▾' : '▸') : '•') + '</span><span class="nm">' + wbEsc(name) + '</span>' + gs +
+        '<span class="ra"><button type="button" data-ra="rename" title="Rename">' + wbIcon('<path d="M4 20h4L19 9l-4-4L4 16z"/>') + '</button><button type="button" data-ra="delete" title="Delete">' + wbIcon('<path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/>') + '</button></span></div>';
+      if (e.d && open) walk(e.p, depth + 1);
+    });
+    walk('', 0);
+    WB.hovFix = true; setTimeout(wbHovAtPointer, 0);
+    wbTree.innerHTML = h || '<div class="wmsg" style="position:static"><div>The demo folder is empty.<br>Create a file with the + above, or click <b>Edit ↗</b> on a slide.</div></div>';
+  }
+  function wbDrawTabs(force) {
+    const sig = JSON.stringify(WB.open.map(o => [o.path, o === WB.cur, o.model.getAlternativeVersionId() !== o.saved]));
+    if (!force && sig === WB.tabSig) return; WB.tabSig = sig;
+    wbTabs.innerHTML = WB.open.map(o => '<div class="wtab' + (o === WB.cur ? ' on' : '') + (o.model.getAlternativeVersionId() !== o.saved ? ' dirty' : '') + '" role="tab" data-p="' + wbEsc(o.path) + '" title="' + wbEsc(o.path) + '"><i class="dt"></i>' + wbEsc(o.path.split('/').pop()) + '<span class="x" data-x="1" title="Close">×</span></div>').join('');
+  }
+  function wbLang(path) {
+    const m = WB.monaco, low = path.toLowerCase(), base = low.split('/').pop();
+    if (/^dockerfile|\.dockerfile$/.test(base)) return 'dockerfile';
+    if (/\.properties$|\.env$|\.editorconfig$/.test(low)) return 'ini';
+    const l = m.languages.getLanguages().find(x => (x.filenames || []).some(f => f.toLowerCase() === base) || (x.extensions || []).some(e => low.endsWith(e)));
+    return l ? l.id : 'plaintext';
+  }
+  async function wbOpenFile(path) {
+    if (!WB.editor) return;
+    let o = WB.open.find(x => x.path === path);
+    if (!o) {
+      let r; try { r = await wbApi('read', P(path)); } catch (err) { toast(err.message); return; }
+      const text = await r.text(), m = WB.monaco;
+      const uri = m.Uri.parse('file:///' + path.split('/').map(encodeURIComponent).join('/'));
+      const model = m.editor.getModel(uri) || m.editor.createModel(text, wbLang(path), uri);
+      o = { path, model, saved: model.getAlternativeVersionId(), mtime: +r.headers.get('X-Mtime') || 0 };
+      model.onDidChangeContent(() => wbDrawTabs());
+      WB.open.push(o);
+    }
+    WB.cur = o; WB.editor.setModel(o.model); wbMsg(wbEd, ''); wbDrawTabs(); wbDrawTree(); WB.editor.focus();
+    const i = path.lastIndexOf('/'); if (i > 0) { let d = path.slice(0, i); while (d) { WB.exp.add(d); const j = d.lastIndexOf('/'); d = j > 0 ? d.slice(0, j) : ''; } wbDrawTree(); }
+  }
+  async function wbSave(o = WB.cur) {
+    if (!o) return;
+    try { const r = await wbApi('write', P(o.path), o.model.getValue()); o.saved = o.model.getAlternativeVersionId(); o.mtime = +r.headers.get('X-Mtime') || o.mtime; wbDrawTabs(); toast('Saved ' + o.path); wbRefresh(); }
+    catch (err) { toast('Could not save: ' + err.message); }
+  }
+  function wbClose(o) {
+    if (o.model.getAlternativeVersionId() !== o.saved && !confirm(o.path + ' has unsaved changes. Close it anyway?')) return;
+    WB.open = WB.open.filter(x => x !== o); o.model.dispose();
+    if (WB.cur === o) { WB.cur = WB.open[WB.open.length - 1] || null; if (WB.cur) WB.editor.setModel(WB.cur.model); else { WB.editor.setModel(null); wbMsg(wbEd, 'Open a file from the explorer, or click <b>Edit ↗</b> on a slide.'); } }
+    wbDrawTabs(true); wbDrawTree(true);
+  }
+  function wbLoad() {
+    if (WB.loading) return WB.loading;
+    // xterm first: once Monaco's loader is on the page, a UMD script would register itself with it instead of as a global
+    const xt = termOK ? termLoad().catch(() => null) : Promise.resolve();
+    return WB.loading = xt.then(() => new Promise((ok, no) => {
+      const base = location.origin + location.pathname.replace(/[^/]*$/, '') + '_present/monaco/';
+      window.MonacoEnvironment = { getWorkerUrl: () => URL.createObjectURL(new Blob(["self.MonacoEnvironment={baseUrl:'" + base + "'};importScripts('" + base + "vs/base/worker/workerMain.js');"], { type: 'text/javascript' })) };
+      const sc = Object.assign(document.createElement('script'), { src: '_present/monaco/vs/loader.js' });
+      sc.onerror = () => no(new Error('Could not load the editor from the launcher.'));
+      sc.onload = () => { window.require.config({ paths: { vs: '_present/monaco/vs' } }); window.require(['vs/editor/editor.main'], () => ok(window.monaco), e => no(e)); };
+      document.head.append(sc);
+    })).then(m => {
+      WB.monaco = m;
+      const mono = (getComputedStyle(stage).getPropertyValue('--mono') || '').trim();
+      WB.editor = m.editor.create(wbEd, { theme: CH_MONACO[chCur], automaticLayout: true, fontFamily: (mono ? mono + ', ' : '') + '"Cascadia Mono", Consolas, monospace', fontSize: 15,
+        minimap: { enabled: false }, scrollBeyondLastLine: false, tabSize: 2, renderWhitespace: 'selection', model: null });
+      WB.editor.addCommand(m.KeyMod.CtrlCmd | m.KeyCode.KeyS, () => wbSave());
+      wbMsg(wbEd, 'Open a file from the explorer, or click <b>Edit ↗</b> on a slide.');
+    }).catch(err => { WB.loading = null; throw err; });
+  }
+  function wbMountTerm(on) {
+    if (on && termOK) { wbTerm.querySelectorAll('.wmsg').forEach(m => m.remove()); if (termEl.parentNode !== wbTerm) wbTerm.append(termEl); termEl.classList.add('inwb', 'open'); document.body.classList.remove('term-open');
+      if (window.Terminal) { const t = TT.cur || tabNew(); TT.cur = t; TT.tabs.forEach(o => { o.el.style.display = o === t ? '' : 'none'; o.tabEl.classList.toggle('on', o === t); });
+        requestAnimationFrame(() => { try { t.fit.fit(); } catch (e) {} if (!t.ws) tabConnect(t); }); } }
+    else if (!on && termEl.classList.contains('inwb')) { termEl.classList.remove('inwb', 'open'); document.body.append(termEl); }
+    else if (on && !termOK) wbMsg(wbTerm, 'This deck has no terminal (Deck.config({ terminal: true })).');
+  }
+  async function wbShow(on) {
+    on = on == null ? !wbEl.classList.contains('open') : on;
+    if (on) { if (webp.classList.contains('open')) panelShow(false); if (termEl.classList.contains('open') && !termEl.classList.contains('inwb')) termShow(false); }
+    wbEl.classList.toggle('open', on); document.body.classList.toggle('wb-open', on); wbBtn.setAttribute('aria-pressed', String(on)); fit();
+    if (!on) { clearInterval(WB.timer); wbMountTerm(false); if (wbEl.contains(document.activeElement)) document.activeElement.blur(); return; }
+    if (!wbKit) { wbMsg(wbEd, '<b>The workbench edits real files, so it needs the presenter kit.</b><br>Start the deck with its <b>Present</b> launcher, then press E again.'); return; }
+    try { await wbLoad(); } catch (err) { wbMsg(wbEd, '<b>The editor could not start.</b><br>' + wbEsc(err.message || err) + '<br>Is the launcher\'s console window still open?'); return; }
+    wbMountTerm(true); await wbRefresh();
+    if (cfg.demo) { wbEl.querySelector('[data-a="setup"]').style.display = ''; const sts = await demoStages(); if (sts.length) { wbEl.querySelector('[data-a="stage"]').style.display = ''; demoOffer(); } }
+    clearInterval(WB.timer); WB.timer = setInterval(() => { if (!document.hidden) wbRefresh(); }, 3000);
+    if (WB.cur) WB.editor.focus();
+  }
+  // "Edit ↗" on a slide's code panel: write it to the demo folder if it is not there yet, then open it
+  async function wbEdit(path, src) {
+    if (!wbKit) { toast('The workbench needs the presenter kit: start the deck with its Present launcher.'); return; }
+    await wbShow(true); if (!WB.editor) return;
+    if (!WB.entries.some(e => e.p === path)) { try { await wbApi('write', P(path), src.replace(/\n?$/, '\n')); toast('Created ' + path + ' in the demo folder'); await wbRefresh(); } catch (err) { toast('Could not create ' + path + ': ' + err.message); return; } }
+    else {
+      let cur = null; try { cur = await (await wbApi('read', P(path))).text(); } catch (err) {}
+      const norm = x => String(x).replace(/\r\n/g, '\n').replace(/\s+$/, '');
+      if (cur != null && norm(cur) !== norm(src)) return wbCompare(path, cur, src);
+    }
+    wbOpenFile(path);
+  }
+  // the file in the demo folder and this slide's version side by side; nothing is written until the presenter chooses
+  function wbCompare(path, mine, slide) {
+    const m = WB.monaco; wbEd.querySelectorAll('.wdiff').forEach(x => x.remove());
+    const box = document.createElement('div'); box.className = 'wdiff';
+    box.innerHTML = '<div class="dh"><b>' + wbEsc(path) + '</b><span class="lr">left: the file in the demo folder · right: this slide</span><span class="sp"></span>' +
+      '<button type="button" class="tx" data-c="keep">Keep mine</button><button type="button" class="tx go" data-c="use">Use the slide\'s version</button></div><div class="db"></div>';
+    wbEd.append(box);
+    const lang = wbLang(path), a = m.editor.createModel(mine, lang), b = m.editor.createModel(slide.replace(/\n?$/, '\n'), lang);
+    const de = m.editor.createDiffEditor(box.querySelector('.db'), { theme: CH_MONACO[chCur], automaticLayout: true, readOnly: true, originalEditable: false, renderSideBySide: true, minimap: { enabled: false }, fontSize: 14 });
+    de.setModel({ original: a, modified: b });
+    const done = () => { de.dispose(); a.dispose(); b.dispose(); box.remove(); };
+    box.querySelector('.dh').addEventListener('click', async e => {
+      const c = e.target.closest('button') && e.target.closest('button').dataset.c; if (!c) return;
+      if (c === 'use') { try { await wbApi('write', P(path), slide.replace(/\n?$/, '\n')); const o = WB.open.find(x => x.path === path); if (o) { o.model.setValue(slide.replace(/\n?$/, '\n')); o.saved = o.model.getAlternativeVersionId(); }
+        toast('Replaced ' + path + ' with the slide\'s version'); } catch (err) { toast('Could not write: ' + err.message); return; } }
+      else toast('Kept your ' + path);
+      done(); await wbRefresh(); wbOpenFile(path);
+    });
+  }
+  // ---- demo projects: one per language, in stages (one per demo step); a slide names its stage with stage: 'id' ----
+  const DEMO = { stages: null };
+  async function demoStages() {
+    if (DEMO.stages) return DEMO.stages;
+    try { const r = await fetch('/__demo/stages?tk=' + encodeURIComponent(TK) + '&lang=' + encodeURIComponent(D.lang || 'default')); DEMO.stages = r.ok ? await r.json() : []; } catch (e) { DEMO.stages = []; }
+    return DEMO.stages;
+  }
+  function slideStage() {   // the stage this slide expects: its own, or the last one named before it
+    for (let i = step; i >= 0; i--) { const st = STEPS[i]; if (st.kind === 'frame' && byId[st.id] && byId[st.id].stage) return byId[st.id].stage; }
+    return DEMO.stages && DEMO.stages[0] ? DEMO.stages[0].id : null;
+  }
+  async function demoApply(stage, ask = true) {
+    const sts = await demoStages(), st = sts.find(x => x.id === stage); if (!st) { toast('This deck has no demo project stage ' + stage + ' for ' + (D.lang || 'this language') + '.'); return; }
+    if (ask && !confirm('Put the demo folder back to "' + (st.title || st.id) + '"?\nThe demo project\'s files are replaced with that stage; other files stay.')) return;
+    try { const r = await fetch('/__demo/apply?tk=' + encodeURIComponent(TK) + '&lang=' + encodeURIComponent(D.lang || 'default') + '&stage=' + encodeURIComponent(stage), { method: 'POST' });
+      if (!r.ok) throw new Error(await r.text()); const j = await r.json();
+      WB.open.forEach(o => { o.mtime = -1; o.saved = o.model.getAlternativeVersionId(); });   // reload every open file from disk
+      await wbRefresh(); toast('Demo folder set to "' + (st.title || st.id) + '" (' + j.files + ' files)'); }
+    catch (err) { toast('Could not set up the demo project: ' + err.message); }
+  }
+  async function demoOffer() {   // an empty demo folder: offer the demo project's first stage
+    const sts = await demoStages(); if (!sts.length || WB.entries.length) return;
+    wbTree.innerHTML = '<div class="wmsg" style="position:static"><div>The demo folder is empty.<br><br><button type="button" class="tx go" data-start="1">Start from the ' + (((LG.find(l => l.id === D.lang) || {}).name || '') ? wbEsc(LG.find(l => l.id === D.lang).name) + ' ' : '') + 'demo project</button></div></div>';
+  }
+  wbTree.addEventListener('click', e => { if (e.target.closest('[data-start]')) demoStages().then(s => s[0] && demoApply(s[0].id, false)); }, true);
+  wbBtn.onclick = e => { e.stopPropagation(); wbShow(); };
+  try { if (localStorage.getItem('deck.wb-noside')) wbEl.classList.add('noside'); } catch (e) {}
+  { const KEY = 'deck.drawer-h', root = document.documentElement; let h = 0;
+    try { h = +localStorage.getItem(KEY) || 0; } catch (e) {} if (h) root.style.setProperty('--term-h', h + 'px');
+    for (const host of [termEl, webp]) {
+      const g = document.createElement('div'); g.className = 'dgrip'; g.title = 'Drag to resize (double-click: default size)'; g.setAttribute('role', 'separator'); host.prepend(g);
+      g.addEventListener('pointerdown', e => {
+        e.preventDefault(); g.setPointerCapture(e.pointerId); g.classList.add('on'); document.body.classList.add('term-drag');
+        const mv = ev => { h = Math.round(Math.max(160, Math.min(innerHeight - 40, innerHeight - ev.clientY))); root.style.setProperty('--term-h', h + 'px'); fit(); if (TT.cur) try { TT.cur.fit.fit(); } catch (er) {} };
+        const up = () => { g.removeEventListener('pointermove', mv); g.removeEventListener('pointerup', up); g.classList.remove('on'); document.body.classList.remove('term-drag'); try { localStorage.setItem(KEY, String(h)); } catch (er) {} };
+        g.addEventListener('pointermove', mv); g.addEventListener('pointerup', up); });
+      g.ondblclick = () => { h = 0; root.style.removeProperty('--term-h'); try { localStorage.removeItem(KEY); } catch (er) {} fit(); if (TT.cur) try { TT.cur.fit.fit(); } catch (er) {} };
+    }
+  }
+  // drag handles; sizes are remembered (localStorage) and applied as CSS variables on the workbench
+  { const KEY = 'deck.wb-size', root = document.documentElement;
+    let sz = {}; try { sz = JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch (e) {}
+    const apply = () => { if (sz.h) root.style.setProperty('--wb-h', sz.h + 'px'); if (sz.side) wbEl.style.setProperty('--wb-side', sz.side + 'px'); if (sz.term) wbEl.style.setProperty('--wb-term', sz.term + 'px'); };
+    const save = () => { try { localStorage.setItem(KEY, JSON.stringify(sz)); } catch (e) {} };
+    apply();
+    const drag = (el, move) => el.addEventListener('pointerdown', e => {
+      e.preventDefault(); el.setPointerCapture(e.pointerId); el.classList.add('on'); document.body.classList.add('wb-drag');
+      const mv = ev => { move(ev); apply(); if (WB.editor) WB.editor.layout(); if (TT.cur) try { TT.cur.fit.fit(); } catch (er) {} };
+      const up = () => { el.removeEventListener('pointermove', mv); el.removeEventListener('pointerup', up); el.classList.remove('on'); document.body.classList.remove('wb-drag'); save(); fit(); };
+      el.addEventListener('pointermove', mv); el.addEventListener('pointerup', up); });
+    drag(wbEl.querySelector('.wgrip'), ev => { sz.h = Math.round(Math.max(220, Math.min(innerHeight - 40, innerHeight - ev.clientY))); fit(); });
+    drag(wbEl.querySelector('.wsplit'), ev => { const l = wbEl.getBoundingClientRect().left; sz.side = Math.round(Math.max(150, Math.min(wbEl.clientWidth * .6, ev.clientX - l))); });
+    drag(wbEl.querySelector('.tgrip'), ev => { const c = wbEl.querySelector('.wcenter').getBoundingClientRect(); sz.term = Math.round(Math.max(80, Math.min(c.height - 120, c.bottom - ev.clientY))); });
+    // double-click a handle: back to the default size
+    wbEl.querySelector('.wgrip').ondblclick = () => { delete sz.h; root.style.removeProperty('--wb-h'); save(); fit(); };
+    wbEl.querySelector('.wsplit').ondblclick = () => { delete sz.side; wbEl.style.removeProperty('--wb-side'); save(); };
+    wbEl.querySelector('.tgrip').ondblclick = () => { delete sz.term; wbEl.style.removeProperty('--wb-term'); save(); };
+  }
+  wbEl.querySelector('.wtop').addEventListener('click', e => {
+    const b = e.target.closest('button'), a = b && b.dataset.a; if (!a) return;
+    if (a === 'hide') wbShow(false);
+    else if (a === 'size') { wbEl.classList.toggle('full'); }
+    else if (a === 'panel') { $('sb').click(); return; }
+    else if (a === 'chrome') { chNext(); return; }
+    else if (a === 'explorer') { const h = wbEl.classList.toggle('noside'); try { localStorage.setItem('deck.wb-noside', h ? '1' : ''); } catch (er) {} if (WB.editor) WB.editor.layout(); return; }
+    else if (a === 'stage') { const sg = slideStage(); if (sg) demoApply(sg); else toast('This slide names no demo stage.'); }
+    else if (a === 'setup') setupShow(true);
+    else if (a === 'code') wbApi('code', '', '').then(() => toast('Opening VS Code on ' + WB.root)).catch(err => toast(err.message));
+  });
+  wbEl.querySelector('.whd').addEventListener('click', async e => {
+    const b = e.target.closest('button'), a = b && b.dataset.a; if (!a || !wbKit) return;
+    if (a === 'refresh') return wbRefresh();
+    const se = WB.entries.find(x => x.p === WB.sel), base = !WB.sel ? '' : se && !se.d ? (WB.sel.includes('/') ? WB.sel.slice(0, WB.sel.lastIndexOf('/')) : '') : WB.sel;
+    const name = prompt(a === 'newfile' ? 'New file (path inside the demo folder):' : 'New folder:', base ? base + '/' : ''); if (!name) return;
+    const pth = name.trim().replace(/\\/g, '/').replace(/^\/+/, '').replace(/\/+$/, a === 'newdir' ? '' : '/');
+    if (!pth || pth.endsWith('/')) { toast('Type a file name, for example ' + (WB.sel ? WB.sel + '/' : '') + 'notes.md'); return; }
+    if (WB.entries.some(e => e.p === pth)) { toast(pth + ' already exists' + (a === 'newfile' ? ': opened it.' : '.')); if (a === 'newfile') wbOpenFile(pth); return; }
+    try { if (a === 'newfile') { await wbApi('write', P(pth), ''); await wbRefresh(); await wbOpenFile(pth); toast('Created ' + pth); } else { await wbApi('mkdir', P(pth), ''); WB.exp.add(pth); await wbRefresh(); toast('Created folder ' + pth); } }
+    catch (err) { toast('Could not create ' + pth + ': ' + err.message); }
+  });
+  // after a redraw the row under the pointer may be a new one (a row above was deleted): show its buttons without a mouse move
+  function wbHovAtPointer() {
+    if (!WB.ptr) return; const el = document.elementFromPoint(WB.ptr[0], WB.ptr[1]), r = el && el.closest && el.closest('#wb .r');
+    wbTree.querySelectorAll('.r.hov').forEach(x => { if (x !== r) x.classList.remove('hov'); });
+    if (r) { r.classList.add('hov'); WB.hov = r.dataset.p; }
+  }
+  wbTree.addEventListener('mousemove', e => { WB.ptr = [e.clientX, e.clientY]; });
+  wbTree.addEventListener('mouseover', e => { const r = e.target.closest('.r'); const pth = r ? r.dataset.p : null; if (pth === WB.hov) return;
+    WB.hov = pth; wbTree.querySelectorAll('.r.hov').forEach(x => x.classList.remove('hov')); if (r) r.classList.add('hov'); });
+  wbTree.addEventListener('mouseleave', () => { WB.hov = null; WB.ptr = null; wbTree.querySelectorAll('.r.hov').forEach(x => x.classList.remove('hov')); });
+  wbTree.addEventListener('click', async e => {
+    const r = e.target.closest('.r'); if (!r) return; const pth = r.dataset.p, dir = r.dataset.d === '1', ra = e.target.closest('[data-ra]');
+    if (ra) { WB.sel = pth; return wbAct(ra.dataset.ra, pth, dir); }
+    if (dir) { WB.sel = pth; if (WB.exp.has(pth)) WB.exp.delete(pth); else WB.exp.add(pth); wbDrawTree(); }
+    else { WB.sel = pth; wbOpenFile(pth); }
+  });
+  wbTree.addEventListener('keydown', e => {   // F2 renames, Delete deletes the selected item (like VS Code)
+    const r = wbTree.querySelector('.r.sel') || wbTree.querySelector('.r.on'); if (!r) return;
+    if (e.key === 'F2') { e.preventDefault(); wbAct('rename', r.dataset.p, r.dataset.d === '1'); }
+    else if (e.key === 'Delete') { e.preventDefault(); wbAct('delete', r.dataset.p, r.dataset.d === '1'); }
+  });
+  async function wbAct(act, pth, dir) {
+    if (act === 'rename') { const to = prompt('Rename to:', pth); if (!to || to === pth) return;
+      const dest = to.trim().replace(/\\/g, '/').replace(/^\/+/, '');
+      try { await wbApi('rename', P(pth) + '&to=' + encodeURIComponent(dest), ''); const o = WB.open.find(x => x.path === pth); if (o) { o.saved = o.model.getAlternativeVersionId(); wbClose(o); } WB.sel = dest; await wbRefresh(); toast('Renamed to ' + dest); if (!dir) wbOpenFile(dest); } catch (err) { toast('Could not rename: ' + err.message); } return; }
+    if (act === 'delete') { if (!confirm('Delete ' + pth + (dir ? ' and everything in it' : '') + '?')) return;
+      try { await wbApi('delete', P(pth), ''); WB.open.filter(x => x.path === pth || x.path.startsWith(pth + '/')).forEach(o => { o.saved = o.model.getAlternativeVersionId(); wbClose(o); }); if (WB.sel === pth) WB.sel = ''; await wbRefresh(); toast('Deleted ' + pth); } catch (err) { toast('Could not delete: ' + err.message); } return; }
+  }
+  wbTabs.addEventListener('click', e => { const t = e.target.closest('.wtab'); if (!t) return; const o = WB.open.find(x => x.path === t.dataset.p); if (!o) return; if (e.target.closest('[data-x]')) wbClose(o); else wbOpenFile(o.path); });
+  if (wbOn) stage.addEventListener('click', e => { const el = e.target.closest && e.target.closest('[data-edit]'); if (el) { e.stopPropagation(); wbEdit(el.getAttribute('data-edit'), el.getAttribute('data-edit-src') || ''); } }, true);
+  // ---- the demo setup: asked the first time a deck with Deck.config({ demo: {...} }) is started from its launcher ----
+  // demo: { ask: ['repo', 'sonar', 'kube'], checks: ['git', 'gh', 'docker', 'kubectl', 'sonar'] } (the language's own tool is always checked)
+  const setupEl = $('setup'), setupCard = setupEl.querySelector('.card');
+  const SETUP_INFO = { repo: ['GitHub repository', 'owner/name, for example my-org/orders-api. The demos push to it and open its Actions page.'],
+    sonar: ['SonarQube server', 'Its address, for example http://localhost:9000. Tokens are never stored here: use the scanner\'s own setting or an environment variable.'],
+    kube: ['Kubernetes context', 'The kubectl context the demos use, for example kind-demo. Empty: the current context.'],
+    gitlab: ['GitLab project', 'Its address, for example https://gitlab.com/my-group/orders-api (or your company\'s GitLab). The demos push to it and open its pipelines. Sign in with glab auth login; no token is stored here.'] };
+  const CHECK_NAME = { git: 'Git', gh: 'GitHub CLI login', docker: 'Docker', kubectl: 'kubectl', sonar: 'SonarQube server', repo: 'GitHub repository', glab: 'GitLab CLI login', gitlab: 'GitLab project', ansible: 'Ansible', terraform: 'Terraform', aws: 'AWS CLI', az: 'Azure CLI', gcloud: 'Google Cloud CLI', python: 'Python', node: 'Node.js', java: 'Java + Maven', dotnet: '.NET SDK' };
+  const CHECK_FIX = { git: 'Install Git: https://git-scm.com', gh: 'Run in the terminal: gh auth login', docker: 'Start Docker Desktop (or install it)', kubectl: 'Install kubectl and create a cluster (kind create cluster)',
+    sonar: 'Start it: docker run -d --name sonarqube -p 9000:9000 sonarqube:community', repo: 'Create it: gh repo create <owner/name> --private', glab: 'Install glab (gitlab.com/gitlab-org/cli), then run: glab auth login', ansible: 'Ansible runs on Linux or macOS (not Windows): use the Remote Linux launcher, or install it there: python3 -m pip install --user ansible',
+    terraform: 'Install Terraform: https://developer.hashicorp.com/terraform/install', aws: 'Only for real plans: install the AWS CLI and run aws configure (or aws sso login)',
+    az: 'Only for real plans: install the Azure CLI and run az login', gcloud: 'Only for real plans: install the gcloud CLI and run gcloud auth application-default login',
+    gitlab: 'Create it: glab repo create <group/name> --private (on your GitLab), or check the address', python: 'Install Python 3.12', node: 'Install Node.js 22', java: 'Install JDK 21 and Maven', dotnet: 'Install the .NET 8 SDK' };
+  function setupShow(on) {
+    setupEl.classList.toggle('open', on); if (!on) return;
+    const dm = cfg.demo || {}, ask = dm.ask || [], dv = D.demo || {}, lg = dv.lang || D.lang;
+    setupCard.innerHTML = '<h2>Demo setup</h2><p class="sub">For the live demos of this deck. Saved on this computer only (next to the deck), never inside the deck file.</p>' +
+      (LG.length > 1 ? '<label>' + (cfg.langLabel ? wbEsc(cfg.langLabel) + ' for the demos' : 'Language of the demo project') + '</label><div class="langs">' + LG.map(l => '<button type="button" data-lang="' + l.id + '" class="' + (l.id === lg ? 'on' : '') + '">' + wbEsc(l.name || l.id) + '</button>').join('') + '</div>' : '') +
+      ask.map(k => '<label for="set-' + k + '">' + SETUP_INFO[k][0] + '</label><div class="row"><input type="text" id="set-' + k + '" spellcheck="false" autocomplete="off" value="' + wbEsc(dv[k] || (k === 'sonar' ? 'http://localhost:9000' : '')) + '">' +
+        (k === 'repo' || k === 'gitlab' ? '<button type="button" class="b" data-create="' + k + '">Create it in the terminal</button>' : '') + '</div><div class="hint">' + SETUP_INFO[k][1] + '</div>').join('') +
+      '<label>Pre-flight check</label><div class="checks"></div>' +
+      '<div class="foot"><button type="button" class="b" data-run="1">Check again</button><button type="button" class="b" data-close="1">Close</button><button type="button" class="b go" data-save="1">Save and reload</button></div>';
+    setupCheck();
+  }
+  async function setupCheck() {
+    const dm = cfg.demo || {}, box = setupCard.querySelector('.checks'); if (!box) return;
+    const lg = (setupCard.querySelector('.langs button.on') || {}).dataset ? setupCard.querySelector('.langs button.on').dataset.lang : D.lang;
+    const ask = dm.ask || [];   // everything the setup asks for is checked too
+    const list = [...new Set((dm.checks || ['git']).concat(lg && CHECK_NAME[lg] ? [lg] : []).concat(ask.includes('repo') ? ['repo'] : [], ask.includes('gitlab') ? ['glab', 'gitlab'] : [], ask.includes('sonar') ? ['sonar'] : [], ask.includes('kube') ? ['kubectl'] : []))];
+    box.innerHTML = list.map(c => '<div class="ck wait" data-ck="' + c + '"><i></i><b>' + CHECK_NAME[c] + '</b><span>checking…</span></div>').join('');
+    await Promise.all(list.map(async c => {
+      const row = box.querySelector('[data-ck="' + c + '"]'), argEl = setupCard.querySelector('#set-' + (c === 'sonar' || c === 'repo' || c === 'gitlab' ? c : '_'));
+      if ((c === 'repo' || c === 'sonar' || c === 'gitlab') && argEl && !argEl.value.trim()) { row.className = 'ck bad'; row.querySelector('span').textContent = 'Not set yet.'; return; }
+      try { const r = await fetch('/__demo/check?tk=' + encodeURIComponent(TK) + '&what=' + c + (argEl ? '&arg=' + encodeURIComponent(argEl.value.trim()) : ''));
+        const j = await r.json(); row.className = 'ck ' + (j.ok ? 'ok' : 'bad'); row.querySelector('span').textContent = j.ok ? (j.text || 'OK').split('\n')[0] : (j.text ? j.text.split('\n').slice(0, 3).join('\n') + '\n' : '') + 'Fix: ' + CHECK_FIX[c]; }
+      catch (err) { row.className = 'ck bad'; row.querySelector('span').textContent = 'The launcher is not answering.'; }
+    }));
+  }
+  setupCard.addEventListener('click', async e => {
+    const b = e.target.closest('button'); if (!b) return;
+    if (b.dataset.lang) { setupCard.querySelectorAll('.langs button').forEach(x => x.classList.toggle('on', x === b)); setupCheck(); }
+    else if (b.dataset.run) setupCheck();
+    else if (b.dataset.close) setupShow(false);
+    else if (b.dataset.create === 'gitlab') { const v = ((setupCard.querySelector('#set-gitlab') || {}).value || '').trim(), m = /^https?:\/\/([^/]+)\/(.+?)(?:\.git)?\/?$/.exec(v);
+      setupShow(false); termSend((m && m[1] !== 'gitlab.com' ? 'glab repo create ' + m[2] + ' --private --hostname ' + m[1] : 'glab repo create ' + (m ? m[2] : 'my-group/orders-api') + ' --private')); }
+    else if (b.dataset.create) { const v = (setupCard.querySelector('#set-repo') || {}).value || ''; setupShow(false); termSend('gh repo create ' + (v.trim() || 'owner/orders-api') + ' --private'); }
+    else if (b.dataset.save) {
+      const out = Object.assign({}, D.demo || {}); (cfg.demo.ask || []).forEach(k => { out[k] = (setupCard.querySelector('#set-' + k) || {}).value.trim(); });
+      const lb = setupCard.querySelector('.langs button.on'); if (lb) out.lang = lb.dataset.lang;
+      if (out.repo) { out.owner = out.repo.split('/')[0]; out.repoName = out.repo.split('/')[1] || ''; }
+      if (out.gitlab) { const m = /^(https?:\/\/[^/]+)\/(.+?)(?:\.git)?\/?$/.exec(out.gitlab); if (m) { out.gitlab = m[1] + '/' + m[2]; out.gitlabHost = m[1]; out.gitlabPath = m[2]; } }
+      out.saved = new Date().toISOString();
+      try { const r = await fetch('/__demo/config?tk=' + encodeURIComponent(TK), { method: 'POST', body: JSON.stringify(out, null, 2) }); if (!r.ok) throw new Error(r.status); }
+      catch (err) { toast('Could not save the setup: ' + err.message); return; }
+      try { if (out.lang) localStorage.setItem(lgKey, out.lang); const st = STEPS[step]; if (st && st.kind === 'frame') sessionStorage.setItem('deck.goto', st.id); } catch (er) {}
+      const u = new URL(location.href); if (out.lang) u.searchParams.set('lang', out.lang); u.hash = ''; location.replace(u.href);
+    }
+  });
+  setupEl.addEventListener('click', e => { if (e.target === setupEl) setupShow(false); });
+  setupEl.addEventListener('keydown', e => { if (e.key === 'Escape') setupShow(false); e.stopPropagation(); });
+  // first start from the launcher with nothing saved yet: ask now (the language from the setup wins over a remembered one)
+  if (cfg.demo && termOK !== undefined && TK && /^https?:$/.test(location.protocol) && !RENDER) {
+    if (!D.demo || !D.demo.saved) setTimeout(() => setupShow(true), 400);
+  }
+  kit.demo = { setup: () => setupShow(true), apply: demoApply, stage: () => slideStage(), get values() { return D.demo || {}; } };
+  addEventListener('unhandledrejection', e => { if (e.reason && (e.reason.name === 'Canceled' || e.reason.message === 'Canceled')) e.preventDefault(); });
+  kit.workbench = { refresh: () => wbRefresh(), open: path => path ? wbShow(true).then(() => wbOpenFile(path)) : wbShow(true), hide: () => wbShow(false), edit: wbEdit, get available() { return wbKit; } };
+  function toast(m) { const n = document.createElement('div'); n.className = 'toast'; n.textContent = m; document.body.append(n); setTimeout(() => n.remove(), 2400); }
+  addEventListener('keydown', e => {
+    if (e.target && e.target.closest && e.target.closest('#term')) return;   // typing in the terminal: every key is the shell's (Ctrl+` is caught by xterm)
+    if (e.target && e.target.closest && e.target.closest('#wb')) return;   // the workbench (editor, explorer) keeps its keys
+    if (setupEl.classList.contains('open')) return;   // the demo setup card has the keyboard
+    if (termOn && e.code === 'Backquote' && !e.altKey && !e.metaKey && !(e.target && e.target.closest && e.target.closest('input, textarea, select, [contenteditable]'))) { e.preventDefault(); termShow(e.ctrlKey ? null : true); return; }
+    if (e.target && e.target.closest && e.target.closest('input, textarea, select, [contenteditable]')) { if (e.key === 'Escape') e.target.blur(); return; }
+    if (e.target && e.target.closest && e.target.closest('.dk-live') && (e.key === ' ' || e.key === 'Enter')) return;   // Space/Enter press the focused control
+    const openPick = thPickEl.classList.contains('open') ? thPickEl : lvPickEl.classList.contains('open') ? lvPickEl : lgPickEl.classList.contains('open') ? lgPickEl : null;
+    if (openPick) {   // an open picker (theme or level) has the keyboard
+      const bs = [...openPick.querySelectorAll('button')], j = bs.indexOf(document.activeElement);
+      if (['Escape', 'c', 'C', 'l', 'L', 'g', 'G'].includes(e.key)) { e.preventDefault(); if (openPick === thPickEl) { pickOpen(false); thBtn.focus(); } else if (openPick === lgPickEl) { lgOpen(false); lgBtn.focus(); } else { lvOpen(false); lvBtn.focus(); } }
+      else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); const n = bs.length; bs[((j < 0 ? 0 : j + (e.key === 'ArrowDown' ? 1 : -1)) + n) % n].focus(); }
+      else if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); if (j >= 0) bs[j].click(); }
+      return;
+    }
+    const k = e.key;
+    if ((k === 'ArrowRight' || k === ' ') && e.shiftKey) { e.preventDefault(); finishPart(); }
+    else if (k === 'ArrowRight' || k === 'ArrowDown' || k === 'PageDown' || k === ' ' || k === 'Enter') { e.preventDefault(); next(); }
+    else if (k === 'ArrowLeft' || k === 'ArrowUp' || k === 'PageUp' || k === 'Backspace') { e.preventDefault(); prev(); }
+    else if (k === 'Home') go(Math.max(0, nextShown(0, 1))); else if (k === 'End') go(Math.max(0, nextShown(STEPS.length - 1, -1)));
+    else if ((k === 'e' || k === 'E') && wbOn) wbShow();
+    else if ((k === 'b' || k === 'B') && webOn) { if (webp.classList.contains('open')) panelShow(false); else if (webKit && webSplit) webFull(); else webPickOpen(true); }
+    else if ((k === 'h' || k === 'H') && SLIDES && STEPS[step].kind === 'frame') setHidden(STEPS[step].id, !isHidden(STEPS[step].id));
+    else if (k === 'o' || k === 'O' || (k === 'Escape' && peek)) togglePeek();
+    else if (k === 't' || k === 'T') $('sb').click();
+    else if ((k === 'c' || k === 'C') && TH.length > 1) thBtn.click();
+    else if ((k === 'l' || k === 'L') && LV.length > 1) lvBtn.click();
+    else if ((k === 'g' || k === 'G') && LG.length > 1) lgBtn.click();
+    else if (k === 'i' || k === 'I') { indOn = !indOn; indicate(99); toast(indOn ? 'Animation light on' : 'Animation light off'); }
+    else if (k === 'f' || k === 'F') fullBtn.click(); else if (k === 'n' || k === 'N') $('nt').click(); else if (k === 's' || k === 'S') $('snd').click(); else if (k === 'k' || k === 'K') pauseAnim(); else if (k === 'r' || k === 'R') replay();
+    sleepBar();
+  });
+  // click a frame (in the overview, or while peeking) to jump to it
+  const toldLive = new Set();
+  stage.addEventListener('focusin', e => { const fr = e.target.closest && e.target.closest('.dk-frame'); if (!fr || !e.target.closest('.dk-live') || toldLive.has(fr.dataset.id)) return;
+    toldLive.add(fr.dataset.id); toast('Using the slide: arrows work the control. Esc gives them back to the slides.'); });
+  stage.addEventListener('click', e => {
+    if (e.target.closest && e.target.closest('.dk-live, .dk-yt')) return;
+    const el = e.target.closest && e.target.closest('.dk-frame'); if (!el) return;
+    if (!(peek || STEPS[step].kind === 'overview')) return;
+    const i = STEPS.findIndex(s => s.id === el.dataset.id); if (i >= 0) go(i);
+  });
+  // swipe on touch screens
+  let sx = null; addEventListener('touchstart', e => { sx = e.touches[0].clientX; }, { passive: true });
+  addEventListener('touchend', e => { if (sx == null) return; const dx = e.changedTouches[0].clientX - sx; if (Math.abs(dx) > 50) (dx < 0 ? next : prev)(); sx = null; });
+  // the bar hides while you present, and comes back when the mouse moves
+  // The bar stays out of the presentation: keys never show it (they hide it); moving the mouse near the bottom does
+  let idle = 0; function wake() { bar.classList.remove('hide'); clearTimeout(idle); idle = setTimeout(() => { if (!bar.matches(':hover')) bar.classList.add('hide'); }, 2600); }
+  function sleepBar() { clearTimeout(idle); if (!bar.matches(':hover')) bar.classList.add('hide'); }
+  addEventListener('mousemove', e => { if (e.clientY > innerHeight * .78 || bar.matches(':hover')) wake(); }); wake();
+
+  for (const f of F) if (f.anim && f.anim.init) { try { await f.anim.init.call(f.anim, f.k); } catch (err) { f.failed = true; console.error('[frame ' + f.id + ']', err); } }
+  for (const f of F) if (f.interactive) {   // live controls (quiz, slider…): own state, not a function of t
+    const sc = f.el.querySelector('.dk-scene'); f.ik = Object.assign(Object.create(kit), { stage: f.anim ? sc.appendChild(Object.assign(document.createElement('div'), { style: 'position:absolute;inset:0' })) : sc, W: DW, H: DW * f.h / f.w, frame: f.id });
+    try { if (f.interactive.init) await f.interactive.init.call(f.interactive, f.ik); } catch (err) { f.failed = true; console.error('[frame ' + f.id + ']', err); } }
+  draw(step, camOf(STEPS[step]), 99, true); cam = camOf(STEPS[step]);
+  if (!RENDER) { buildThumbs(); setSide(sideOpen()); indicate(99); }
+  ui(); videos(step);
+
+  // Hooks for scripts/render.py
+  window.__deck = {
+    title: cfg.title, width: W, height: H,
+    steps: STEPS.map((s, i) => ({ i, kind: s.kind, id: s.id, k: s.k, label: label(s) })),
+    go(i) { step = Math.max(0, Math.min(STEPS.length - 1, i)); anim = null; peek = false; draw(step, camOf(STEPS[step]), 99, true); cam = camOf(STEPS[step]); ui(); videos(step); return true; },
+    // step i, camera settled, its scene at t seconds (from arrival, or from the click for a beat)
+    play(i, t) { step = Math.max(0, Math.min(STEPS.length - 1, i)); anim = null; peek = false; const B = camOf(STEPS[step]);
+      draw(step, B, t, true); cam = B; ui(); videos(step, t); return true; },   // camera settled, the scene t seconds in
+    settled() { const vs = F.filter(f => f.vid).map(f => f.vid); if (!vs.length) return Promise.resolve(true);
+      return Promise.race([Promise.all(vs.map(v => v.readyState >= 2 && !v.seeking ? 0 : new Promise(r => { const on = () => { if (v.readyState >= 2 && !v.seeking) r(); }; v.addEventListener('seeked', on); v.addEventListener('loadeddata', on); v.addEventListener('canplay', on); }))), new Promise(r => setTimeout(r, 8000))]).then(() => true); },
+    failed() { return F.filter(f => f.failed).map(f => f.id); },
+    parts() { return STEPS.map((_, i) => partFor(i)); },
+    media() { const credited = new Set(D.creditList.map(c => c.file)); return { uncredited: (D._images || []).filter(n => !credited.has(n)),
+      youtube: F.filter(f => f.yt).map(f => ({ id: f.youtube.id, thumb: !!D._ytThumbs[f.youtube.id], link: !!f.yt.querySelector('a.link[href*="youtube.com/watch"]') })),
+      interactive: F.filter(f => f.interactive).map(f => ({ id: f.id, failed: !!f.failed, controls: f.el.querySelectorAll('.dk-live button, .dk-live input, .dk-live select, .dk-live [tabindex]').length })) }; },
+    slides() { return SL.map(x => ({ id: x.id, i: x.i, label: label({ kind: 'frame', id: x.id, k: 0 }) })); },
+    state() { return { step, count: count.textContent, light: document.getElementById('ready').className, paused: !!(anim && anim.paused) }; },
+    // text inside the current frame that runs off it (checked at rest)
+    offslide() { const st = STEPS[step]; if (st.kind !== 'frame') return []; const f = byId[st.id], R = f.el.getBoundingClientRect(), out = [];
+      const walker = document.createTreeWalker(f.el, NodeFilter.SHOW_TEXT); let n;
+      while ((n = walker.nextNode())) { const t = n.textContent.trim(); if (!t) continue; const el = n.parentElement; if (!el || el.closest('.dk-in[style*="display:none"]')) continue;
+        let v = el, hidden = false; while (v && v !== f.el) { const cs = getComputedStyle(v); if (cs.display === 'none' || cs.visibility === 'hidden' || +cs.opacity < .05) { hidden = true; break; } v = v.parentElement; }
+        if (hidden) continue; const rg = document.createRange(); rg.selectNodeContents(n); const b = rg.getBoundingClientRect(); if (!b.width) continue;
+        const tol = 2; if (b.left < R.left - tol || b.right > R.right + tol || b.top < R.top - tol || b.bottom > R.bottom + tol) { out.push('off the slide: ' + t.slice(0, 40)); continue; }
+        let box = el; while (box && box !== f.el) { const cs = getComputedStyle(box); if (/hidden|clip|auto|scroll/.test(cs.overflow + cs.overflowX + cs.overflowY)) { const r = box.getBoundingClientRect();
+            if (b.bottom > r.bottom + tol || b.right > r.right + tol || b.top < r.top - tol || b.left < r.left - tol) { out.push('cut off by its box: ' + t.slice(0, 40)); break; } } box = box.parentElement; }
+        if (/&(amp|lt|gt|quot|#\d+);/.test(t)) out.push('escaped HTML showing as text: ' + t.slice(0, 40)); }
+      return out; },
+    at(i, p) { const A = i > 0 ? camOf(STEPS[i - 1]) : camOf(STEPS[0]); const h = hop(A, camOf(STEPS[i])); anim = null; draw(i, A, p * (h.still ? REVEAL : h.dur), true); return h.dur; },
+    overflow() { return F.filter(f => { const c = f.el.querySelector('.dk-in'); return c && c.style.display !== 'none' && c.scrollHeight > c.clientHeight + 2 || c.scrollWidth > c.clientWidth + 2; }).map(f => f.id); },
+    hops() { return STEPS.map((s, i) => i ? +hop(camOf(STEPS[i - 1]), camOf(s)).dur.toFixed(2) : 0); },
+  };
+  window.__deckReady = true;
+})().catch(err => {
+  console.error('[deck]', err);
+  const e = document.createElement('div'); e.className = 'dk-error'; e.innerHTML = '<b style="font:600 56px/1.1 system-ui">The deck failed to build</b><div></div>'; e.lastChild.textContent = String(err && err.message || err);
+  document.getElementById('stage').append(e); window.__deckError = String(err && err.message || err);
+});
+</script>
+<script>window.__deckSource = '<!doctype html>\n' + document.documentElement.outerHTML;</script>
+</body>
+</html>

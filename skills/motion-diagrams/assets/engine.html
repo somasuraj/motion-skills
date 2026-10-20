@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>motion-diagrams engine</title>
+<style>
+  @font-face { font-family: 'Inter'; font-weight: 400; src: url('fonts/inter-400.woff2') format('woff2'); }
+  @font-face { font-family: 'Inter'; font-weight: 500; src: url('fonts/inter-500.woff2') format('woff2'); }
+  @font-face { font-family: 'Inter'; font-weight: 600; src: url('fonts/inter-600.woff2') format('woff2'); }
+  @font-face { font-family: 'Inter'; font-weight: 700; src: url('fonts/inter-700.woff2') format('woff2'); }
+  @font-face { font-family: 'JetBrains Mono'; font-weight: 400; src: url('fonts/jetbrains-mono-400.woff2') format('woff2'); }
+  body { margin: 0; font-family: Inter, sans-serif; }
+</style>
+<script src="vendor/elk.bundled.js"></script>
+<script src="engine/core.js"></script>
+<script src="engine/shapes.js"></script>
+<script src="engine/graph.js"></script>
+<script src="engine/grid.js"></script>
+<script src="engine/layouts.js"></script>
+<script src="engine/exports.js"></script>
+</head>
+<body>
+<!-- build.py loads this page headless, loads the fonts, runs the diagram script and calls MD.build(). -->
+<div id="probe" style="position:absolute;visibility:hidden">
+  <span style="font-weight:400">Aa</span><span style="font-weight:500">Aa</span><span style="font-weight:600">Aa</span>
+  <span style="font-weight:700">Aa</span><span style="font-family:'JetBrains Mono'">Aa</span>
+</div>
+</body>
+</html>
