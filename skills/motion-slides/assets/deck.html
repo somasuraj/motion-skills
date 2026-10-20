@@ -503,6 +503,7 @@ window.Deck = {
     if (typeof f.youtube === 'string') f.youtube = { id: f.youtube };
     if (typeof f.video === 'string') f.video = { src: f.video };
     if (f.clip) f.anim = clipAnim(f.clip);
+    if (f.anim && !f.anim.stops && f.anim.dur && !f.anim.beats && !f.anim.partLen) f.anim.stops = [];   // a plain timed anim is one part that plays its whole dur
     if (f.anim && f.anim.stops) f.anim = stopsAnim(f.anim);
     f.fixed = def && def.x != null;
     this.frames.push(f); this.byId[id] = f; return this;
@@ -861,7 +862,7 @@ window.asset = p => p;
   let part = { len: 0, off: 0, loop: false, has: false };
   // how long the animation part shown at step i runs (0: none or unknown; loop: never ends)
   function partFor(i) {
-    const cur = STEPS[i].kind === 'frame' ? byId[STEPS[i].id] : null, r = { len: 0, loop: false, has: !!(cur && (cur.anim || cur.vid)) };
+    const cur = STEPS[i].kind === 'frame' ? byId[STEPS[i].id] : null, r = { len: 0, loop: false, has: !!(cur && (cur.anim || cur.vid)), anim: !!(cur && cur.anim) };
     if (cur && cur.anim) { const a = cur.anim, b = STEPS[i].k;
       if (a.stops) r.len = a.ends[Math.min(b, a.ends.length - 1)] - a.starts[Math.min(b, a.starts.length - 1)];
       else if (a.clip && a.mode === 'loop') r.loop = true;

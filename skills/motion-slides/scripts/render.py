@@ -215,6 +215,8 @@ def cmd_verify(pw, path, out):
             for s in steps:
                 i, pt = s["i"], parts[s["i"]]
                 print(f"   step {i + 1}/{len(steps)}  {s['label']}", flush=True)
+                if pt.get("anim") and pt["len"] <= 0 and not pt["loop"]:   # live, a part of length 0 jumps straight to its end
+                    found.append(f"step {i + 1} ({s['label']}): its animation has no timed part (give the anim a dur or stops), so live it shows its end state at once")
                 if pt["has"] and pt["len"] > 0:      # does this part change anything? start vs end
                     page.evaluate(f"__deck.play({i}, 0.02)"); a = shot(page, info)
                     page.evaluate(f"__deck.play({i}, {pt['len'] / 2})"); m = shot(page, info)
