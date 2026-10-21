@@ -23,6 +23,33 @@ In Claude Code:
 Then ask for what you want: "make an animated deck about…", "make a 30-second explainer video of…",
 "draw the architecture of my Terraform", "a sequence diagram of our login flow".
 
+The repo is private: Claude Code clones it with your own git credentials (`gh auth login` or an SSH key), so you
+need read access.
+
+### Other agents
+
+Each skill under `skills/` is a plain folder with a `SKILL.md` (the open Agent Skills format), so any agent that
+reads that format can use them. Clone the repo and copy (or symlink) the three folders into the agent's skills folder:
+
+```bash
+git clone git@github.com:somasuraj/motion-skills.git
+cp -r motion-skills/skills/* <skills folder from the table>/
+```
+
+| Agent | Project folder | Personal folder (all projects) |
+|---|---|---|
+| Claude Code (without the plugin) | `.claude/skills/` | `~/.claude/skills/` |
+| Claude.ai / Claude desktop | upload `motion-slides.skill`, `motion-videos.skill`, `motion-diagrams.skill` in Settings → Capabilities → Skills (needs code execution) | |
+| OpenAI Codex | `.agents/skills/` | `~/.agents/skills/` |
+| GitHub Copilot (VS Code, CLI) | `.github/skills/` | `~/.copilot/skills/` |
+| Cursor (2.4+) | `.cursor/skills/` | none (project only) |
+| Gemini CLI | `.gemini/skills/` | `~/.gemini/skills/` |
+| OpenCode | `.opencode/skills/` (also reads `.claude/skills/`, `.agents/skills/`) | `~/.config/opencode/skills/` |
+
+Using several agents? Keep one copy in `.agents/skills/` and symlink the other folders to it. These paths change
+between releases, so check your agent's docs if a skill isn't picked up. The agent must be able to run shell
+commands: the skills build everything with the Python scripts below.
+
 ## Requirements
 
 - Python 3.10+ with Playwright and Chromium: `pip install playwright pillow && python -m playwright install chromium`
