@@ -7,7 +7,7 @@ description: Make clear, professional static diagrams with official icons, laid 
 
 Make a diagram as one short JavaScript script; `scripts/build.py` lays it out (ELK for graphs, purpose-
 built layouts for sequence, ER, swimlane, mind map and timeline), draws it with the **icons bundled in the
-skill** (8,440, no downloads: the AWS, Azure, Google Cloud and Kubernetes official packs and 5,300 brand marks,
+skill** (8,506, no downloads: the AWS, Azure, Google Cloud and Kubernetes official packs and 5,360 brand marks,
 plus Lucide glyphs for things that have no brand), fetches the real logo from the internet for any brand the library
 lacks (`fetch_logo.py`, cached after the first time), checks it, and writes every output from one geometry:
 

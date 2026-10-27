@@ -72,7 +72,7 @@ slide version and a document version (`--set aspect=none --set compact=true`).
 
 ## Bundled third-party material
 
-motion-diagrams ships 8,440 icons so builds never download anything. For a brand the pack lacks, `fetch_logo.py` finds
+motion-diagrams ships 8,506 icons (including 66 popular tools added from official sources; see `skills/motion-diagrams/assets/icons/ADDED.md`) so builds never download anything. For a brand the pack lacks, `fetch_logo.py` finds
 its real logo (the vendor's site, gilbarbara/logos, Devicon, Simple Icons, its GitHub organisation, Wikimedia Commons),
 cleans it, records the source and licence, and caches it in `~/.motion-diagrams/icons`; nothing fetched is added to this repo. They remain the property of their owners and are
 included for drawing architecture diagrams, as their terms allow; use them unaltered. Full list and terms:

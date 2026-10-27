@@ -8,11 +8,12 @@
     python fetch_logo.py --list                            # what is cached
 
 Run `icons.py` first: use this only for brands the bundled library does not have. Sources, in order of preference:
-  1. gilbarbara/logos, latest      full-colour marks, CC0 (the same set as the bundled logo/ icons, newer)
-  2. Devicon                       full-colour developer tool and language logos, MIT
-  3. Simple Icons                  single-colour marks in the brand's colour, CC0
-  4. GitHub organisation avatar    often the brand's own square mark (an organisation account only)
-  5. Wikimedia Commons             logo files with their licence noted; only when nothing else matched (broad search)
+  1. CNCF artwork                  official colour icons of every CNCF project (Argo, Flux, OPA, KEDA, cert-manager…)
+  2. gilbarbara/logos, latest      full-colour marks, CC0 (the same set as the bundled logo/ icons, newer)
+  3. Devicon                       full-colour developer tool and language logos, MIT
+  4. Simple Icons                  single-colour marks in the brand's colour, CC0
+  5. GitHub organisation avatar    when the catalogues have nothing; often the brand's own mark (check: anyone can name an org)
+  6. Wikimedia Commons             logo files with their licence noted; only when nothing else matched (broad search)
   +  --domain / --url              the vendor's own files, tried first (its header logo, SVG icon, touch icon)
 
 The chosen logo is cleaned (no scripts, event handlers, external references), saved to the cache
@@ -40,20 +41,20 @@ UA = "motion-diagrams/1.1 (logo fetch for architecture diagrams; https://github.
 MAX = 600_000
 
 
-def get(url, timeout=12):
+def get(url, timeout=12, limit=MAX):
     req = urllib.request.Request(url, headers={"User-Agent": UA, "Accept": "image/svg+xml,image/png,image/*;q=0.8,*/*;q=0.5"})
     with urllib.request.urlopen(req, timeout=timeout) as r:
         if r.status != 200:
             return None, None
-        data = r.read(MAX + 1)
-        return (None, None) if len(data) > MAX else (data, r.headers.get("Content-Type", ""))
+        data = r.read(limit + 1)
+        return (None, None) if len(data) > limit else (data, r.headers.get("Content-Type", ""))
 
 
-def slugs(name):
+def slugs(name, partial=False):
+    """The full name as catalogues spell it ("grafana-loki", "grafanaloki"); partial=True: the last word alone
+    ("Hashicorp Vault" -> vault). Never the first word: it is usually the parent brand (Grafana, Hashicorp)."""
     w = [x for x in re.split(r"[^a-z0-9]+", name.lower()) if x]
-    out = ["-".join(w), "".join(w)]
-    if len(w) > 1:
-        out += [w[-1], w[0]]                      # "Hashicorp Vault" -> vault; "Grafana Loki" -> grafana (checked by eye)
+    out = ([w[-1]] if len(w) > 1 else []) if partial else ["-".join(w), "".join(w)]
     return list(dict.fromkeys(s for s in out if s))
 
 
@@ -131,20 +132,54 @@ def candidate(data, ctype, url, source, licence):
 
 
 # ---------- sources ----------
-def from_gilbarbara(name):
-    for s in slugs(name):
+CNCF_TREE = "https://api.github.com/repos/cncf/artwork/git/trees/main?recursive=1"
+
+
+def cncf_icons():
+    """{project folder: colour icon path} from github.com/cncf/artwork, listed once a week into the cache."""
+    f = CACHE / "cncf-artwork.json"
+    if f.exists() and datetime.date.today().toordinal() - datetime.date.fromtimestamp(f.stat().st_mtime).toordinal() < 7:
+        return json.loads(f.read_text(encoding="utf-8"))
+    data, _ = get(CNCF_TREE, timeout=30, limit=20_000_000)   # the whole repo tree: a few MB of JSON
+    paths = {}
+    for x in json.loads(data or b"{}").get("tree", []):
+        p = x["path"].split("/")
+        if len(p) == 5 and p[0] == "projects" and p[2:4] == ["icon", "color"] and p[4].endswith(".svg"):
+            paths[p[1]] = x["path"]
+    if paths:
+        CACHE.mkdir(parents=True, exist_ok=True); f.write_text(json.dumps(paths), encoding="utf-8")
+    return paths
+
+
+def from_cncf(name, partial=False):
+    # official colour icons of every CNCF project (Argo, Flux, cert-manager, OPA, KEDA, Velero…)
+    try:
+        icons = cncf_icons()
+    except Exception:  # noqa: BLE001 - offline or rate limited: other sources still run
+        return
+    want = {re.sub(r"[^a-z0-9]", "", s) for s in slugs(name, partial)}
+    for proj, path in icons.items():
+        stem = path.rsplit("/", 1)[1][: -len("-icon-color.svg")]
+        p, st = re.sub(r"[^a-z0-9]", "", proj), re.sub(r"[^a-z0-9]", "", stem)
+        if p in want or st in want or any(len(w) >= 6 and p.startswith(w) for w in want):   # external-secrets(-operator)
+            yield f"https://cdn.jsdelivr.net/gh/cncf/artwork@main/{path}", "CNCF artwork", "CNCF project artwork (github.com/cncf/artwork); mark: the project's trademark"
+            return
+
+
+def from_gilbarbara(name, partial=False):
+    for s in slugs(name, partial):
         for f in (f"{s}-icon", s):
             yield f"https://cdn.jsdelivr.net/gh/gilbarbara/logos@main/logos/{f}.svg", "gilbarbara/logos", "CC0 1.0 (mark: owner's trademark)"
 
 
-def from_devicon(name):
-    for s in slugs(name):
+def from_devicon(name, partial=False):
+    for s in slugs(name, partial):
         for v in ("original", "plain"):
             yield f"https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/{s}/{s}-{v}.svg", "Devicon", "MIT (mark: owner's trademark)"
 
 
-def from_simpleicons(name):
-    for s in slugs(name):
+def from_simpleicons(name, partial=False):
+    for s in slugs(name, partial):
         yield f"https://cdn.simpleicons.org/{s}", "Simple Icons", "CC0 1.0 (mark: owner's trademark)"
 
 
@@ -170,7 +205,7 @@ def from_wikimedia(name, log):
 
 def from_github(name):
     # the brand's GitHub organisation avatar is often its official square mark; only kept if it is an organisation
-    for s in slugs(name)[:2]:
+    for s in slugs(name):
         try:
             data, _ = get(f"https://api.github.com/users/{s}")
             u = json.loads(data or b"{}")
@@ -236,7 +271,7 @@ def search(name, domain=None, url=None, limit=8):
             c, err = candidate(data, ctype, u, src, lic)
             if c:
                 cands.append(c)
-                if src in ("gilbarbara/logos", "Devicon", "Simple Icons"):
+                if src in ("CNCF artwork", "gilbarbara/logos", "Devicon", "Simple Icons"):
                     return            # one per catalogue: its first slug match is the brand's own entry
             elif err:
                 log.append(err)
@@ -244,7 +279,12 @@ def search(name, domain=None, url=None, limit=8):
         take(iter([(url, "given URL", "as published at the URL; check the owner's brand terms")]))
     if domain:
         take(from_domain(domain, log))
-    take(from_gilbarbara(name)); take(from_devicon(name)); take(from_simpleicons(name)); take(from_github(name))
+    take(from_cncf(name)); take(from_gilbarbara(name)); take(from_devicon(name)); take(from_simpleicons(name))
+    if not any(c["source"] not in ("vendor site", "given URL") for c in cands):   # nothing under the full name: try the
+        for gen in (from_cncf, from_gilbarbara, from_devicon, from_simpleicons):  # product word alone ("Vault")
+            take(gen(name, partial=True))
+    if not any(c["source"] not in ("vendor site", "given URL") for c in cands):   # an organisation by that name may not
+        take(from_github(name))                                                   # be the brand: after the catalogues
     if not cands:                 # Commons search is broad ("Port" finds every port authority): last resort only
         take(from_wikimedia(name, log))
     return cands, log
