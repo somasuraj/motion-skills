@@ -98,7 +98,7 @@ Diagram.node('alb', 'Load balancer');          // a string second argument is th
 |---|---|
 | `label` | main text (defaults to the id); `\n` forces a line break; long text wraps |
 | `sub` | second line in the dim colour (a role, a detail, "primary", "AZ a") |
-| `icon` | icon id from `scripts/icons.py`; in an architecture diagram a node with an icon and no `shape` is an icon node; in other kinds the icon sits inside the shape, left of the text |
+| `icon` | icon id from `scripts/icons.py`, or `web/<brand>` from `scripts/fetch_logo.py` for a brand the library lacks; in an architecture diagram a node with an icon and no `shape` is an icon node; in other kinds the icon sits inside the shape, left of the text |
 | `shape` | `icon` · `box` (default without icon) · `decision` · `terminal` · `io` · `db` · `doc` · `circle` · `note` · `state` · `start` · `end` · `choice` · `card` · C4 shapes |
 | `tone` | colour of a shape: `accent` `good` `bad` `warn` `data` `muted` `neutral`, `cat0`…`cat7`, or a hex (see §11). On a `generic/` icon it colours the tile |
 | `in` | the group it sits in |

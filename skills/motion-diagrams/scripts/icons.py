@@ -15,15 +15,22 @@ Which prefix to use:
   logo/<brand>           full-colour brand logo; prefer the "-icon" variant (logo/github-icon) for a square mark
   si/<brand>             single-colour brand mark in the brand's colour (when no logo/ fits a square)
   generic/<thing>        neutral glyph for things without a brand (user, server, database, laptop, …)
+  web/<brand>            a real logo fetched from the internet with fetch_logo.py (cached on this machine)
+
+No logo/ or si/ match for a product, tool or company? Don't settle for a generic glyph:
+    python fetch_logo.py "<brand>" [--domain vendor.com]
 """
 import argparse
 import json
+import os
 import pathlib
 import re
 import sys
 
 INDEX = pathlib.Path(__file__).resolve().parent.parent / "assets" / "icons" / "index.json"
-VENDOR_RANK = {"aws": 0, "azure": 0, "gcp": 0, "k8s": 0, "logo": 1, "si": 2, "generic": 3}
+# logos fetched from the internet by fetch_logo.py (web/<slug>)
+WEB_INDEX = pathlib.Path(os.environ.get("MOTION_DIAGRAMS_ICONS") or pathlib.Path.home() / ".motion-diagrams" / "icons") / "index.json"
+VENDOR_RANK = {"aws": 0, "azure": 0, "gcp": 0, "k8s": 0, "logo": 1, "web": 1, "si": 2, "generic": 3}
 
 
 def words(s):
@@ -70,6 +77,8 @@ def main():
     ap.add_argument("--list", action="store_true")
     a = ap.parse_args()
     entries = json.loads(INDEX.read_text(encoding="utf-8"))
+    if WEB_INDEX.exists():
+        entries += json.loads(WEB_INDEX.read_text(encoding="utf-8"))
     if a.vendor:
         entries = [e for e in entries if e["vendor"] == a.vendor]
     ids = {e["id"]: e for e in entries}
@@ -100,6 +109,9 @@ def main():
             print(f"  {e['id']:<58} {e['name']}  [{e['kind']}]{note}")
         if not hits:
             print("  (nothing; try fewer or different words, or --vendor generic)")
+        if not any(e["vendor"] != "generic" for e in hits):
+            print(f'  -> no official icon or logo here. If "{q}" is a product, tool or company, fetch its real logo:\n'
+                  f'     python scripts/fetch_logo.py "{q}"   (add --domain <vendor site> for less known brands)')
     return 0
 
 

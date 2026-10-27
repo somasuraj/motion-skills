@@ -29,6 +29,8 @@ import sys
 HERE = pathlib.Path(__file__).resolve().parent
 ASSETS = HERE.parent / "assets"
 ICONS = ASSETS / "icons"
+# logos fetched from the internet by fetch_logo.py (ids web/<slug>), kept outside the skill so updates keep them
+WEB_ICONS = pathlib.Path(os.environ.get("MOTION_DIAGRAMS_ICONS") or pathlib.Path.home() / ".motion-diagrams" / "icons")
 ENGINE = ASSETS / "engine.html"
 FONTS = {("Inter", 400): "inter-400", ("Inter", 500): "inter-500", ("Inter", 600): "inter-600",
          ("Inter", 700): "inter-700", ("JetBrains Mono", 400): "jetbrains-mono-400"}
@@ -37,13 +39,19 @@ FONTS = {("Inter", 400): "inter-400", ("Inter", 500): "inter-500", ("Inter", 600
 class IconLib:
     def __init__(self):
         self.entries = {e["id"]: e for e in json.loads((ICONS / "index.json").read_text(encoding="utf-8"))}
+        web = WEB_ICONS / "index.json"
+        if web.exists():
+            for e in json.loads(web.read_text(encoding="utf-8")):
+                self.entries[e["id"]] = dict(e, file=str(WEB_ICONS / e["file"]))
         self.by_name = {}
         for e in self.entries.values():
             self.by_name.setdefault(e["name"].lower(), e["id"])
 
     @staticmethod
     def uri(path):
-        return "data:image/svg+xml;base64," + base64.b64encode((ICONS / path).read_bytes()).decode("ascii")
+        p = ICONS / path                     # an absolute path (a fetched logo) stays as it is
+        mime = "image/png" if p.suffix.lower() == ".png" else "image/svg+xml"
+        return f"data:{mime};base64," + base64.b64encode(p.read_bytes()).decode("ascii")
 
     def resolve(self, iid):
         e = self.entries.get(iid)
@@ -53,7 +61,9 @@ class IconLib:
             tail = iid.split("/")[-1]
             close += [i for i in pool if i.endswith("/" + tail) and i not in close][:5]
             hint = ("; did you mean: " + ", ".join(close[:6])) if close else ""
-            return {"error": f'unknown icon "{iid}"{hint}. Search: python scripts/icons.py "<words>"'}
+            fetch = (f' Not in the library? Fetch the real logo: python scripts/fetch_logo.py "{tail}"'
+                     if iid.startswith(("logo/", "si/", "web/")) else "")
+            return {"error": f'unknown icon "{iid}"{hint}. Search: python scripts/icons.py "<words>".{fetch}'}
         r = {"kind": e["kind"], "light": self.uri(e["file"])}
         if e.get("dark"):
             r["dark"] = self.uri(e["dark"])

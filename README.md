@@ -54,13 +54,15 @@ commands: the skills build everything with the Python scripts below.
 
 - Python 3.10+ with Playwright and Chromium: `pip install playwright pillow && python -m playwright install chromium`
 - ffmpeg (motion-videos MP4 export from the command line only)
-- Network once for Google Fonts in decks and films; motion-diagrams bundles its fonts and icons and builds offline.
+- Network once for Google Fonts in decks and films. motion-diagrams bundles its fonts and icons and builds offline;
+  it goes online only to fetch the logo of a brand the bundled pack lacks (once per brand, then cached).
 
 ## motion-diagrams in short
 
 ```bash
 python skills/motion-diagrams/scripts/build.py my-diagram.js --fix      # build + review round
 python skills/motion-diagrams/scripts/icons.py "load balancer" github sonarqube
+python skills/motion-diagrams/scripts/fetch_logo.py "Zitadel" --domain zitadel.com   # a brand the pack lacks: real logo from the web
 python skills/motion-diagrams/scripts/scan_infra.py ./infra             # Terraform / CDK / CloudFormation / compose / k8s
 ```
 
@@ -70,7 +72,9 @@ slide version and a document version (`--set aspect=none --set compact=true`).
 
 ## Bundled third-party material
 
-motion-diagrams ships 8,440 icons so builds never download anything. They remain the property of their owners and are
+motion-diagrams ships 8,440 icons so builds never download anything. For a brand the pack lacks, `fetch_logo.py` finds
+its real logo (the vendor's site, gilbarbara/logos, Devicon, Simple Icons, its GitHub organisation, Wikimedia Commons),
+cleans it, records the source and licence, and caches it in `~/.motion-diagrams/icons`; nothing fetched is added to this repo. They remain the property of their owners and are
 included for drawing architecture diagrams, as their terms allow; use them unaltered. Full list and terms:
 `skills/motion-diagrams/assets/icons/LICENSES.md`.
 

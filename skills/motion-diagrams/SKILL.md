@@ -8,7 +8,8 @@ description: Make clear, professional static diagrams with official icons, laid 
 Make a diagram as one short JavaScript script; `scripts/build.py` lays it out (ELK for graphs, purpose-
 built layouts for sequence, ER, swimlane, mind map and timeline), draws it with the **icons bundled in the
 skill** (8,440, no downloads: the AWS, Azure, Google Cloud and Kubernetes official packs and 5,300 brand marks,
-plus Lucide glyphs for things that have no brand), checks it, and writes every output from one geometry:
+plus Lucide glyphs for things that have no brand), fetches the real logo from the internet for any brand the library
+lacks (`fetch_logo.py`, cached after the first time), checks it, and writes every output from one geometry:
 
 | File | For |
 |---|---|
@@ -24,7 +25,10 @@ plus Lucide glyphs for things that have no brand), checks it, and writes every o
   round (numbered issues with fixes, `name.review.png`); `--fix` also tries layout variants and keeps the best;
   `--set key=value` overrides a config setting for one build (a document and a slide version from one script:
   `--name shop-doc --set aspect=none --set compact=true` beside `--name shop-slides --set aspect=slides`).
-- `scripts/icons.py "words" [--vendor aws|azure|gcp|k8s|logo|si|generic] [--check id …]` — find icon ids. **Never guess an id.**
+- `scripts/icons.py "words" [--vendor aws|azure|gcp|k8s|logo|si|web|generic] [--check id …]` — find icon ids. **Never guess an id.**
+- `scripts/fetch_logo.py "Brand" [--domain site.com] [--url file] [--pick N]` — a brand the library lacks: finds its real
+  logo online, cleans and caches it (`~/.motion-diagrams/icons`, id `web/<brand>`), writes a preview to check by eye.
+  Network needed once per brand; builds after that stay offline. `--list` shows what is cached.
 - `scripts/scan_infra.py <files or folder>` — resources, connections and suggested icons from CloudFormation/SAM/CDK
   output, Terraform, docker-compose and Kubernetes manifests.
 - `scripts/check_editable.py <out folder>` — open the .drawio in diagrams.net and the .excalidraw in Excalidraw and
@@ -84,12 +88,24 @@ VPC, subnet, cluster, team), and the edges that tell the story, each labelled wi
 
 ### 4. Find the icons
 
-Every node that is a product or service gets its **official** icon: `python scripts/icons.py "api gateway" "key vault"
-github sonarqube`. Use the vendor's own pack for that vendor's services (`aws/…`, `azure/…`, `gcp/…`, `k8s/…`), the
-tool's logo for tools (`logo/<brand>-icon` square mark, else `si/<brand>`), and `generic/…` only for things with no
-brand (a user, a laptop, a generic server). Never use one vendor's icon for another's product, never recolour or crop
-an icon, and confirm ids with `--check` if unsure. If a product has no icon in the library, use a `generic/…` glyph and
-say so in one line.
+**Real logos wherever a node is a brand.** Every node that is a product, service, tool, framework, language, SaaS or
+company gets its **official** icon or logo; a generic glyph only for things that have no brand (a user, a laptop, a
+generic server, "the internet"). Read the node list once and mark which are brands before searching.
+
+1. Search the bundled library first: `python scripts/icons.py "api gateway" "key vault" github sonarqube`. Use the
+   vendor's own pack for that vendor's services (`aws/…`, `azure/…`, `gcp/…`, `k8s/…`), the tool's logo for tools
+   (`logo/<brand>-icon` square mark, else `si/<brand>`).
+2. **Not in the library? Fetch it from the internet**, don't fall back to a glyph:
+   `python scripts/fetch_logo.py "Zitadel" --domain zitadel.com` (`--domain` whenever you know the vendor's site; it
+   tries the site's own logo first, then the curated logo sets, the brand's GitHub organisation, Wikimedia Commons).
+   It cleans the file, caches it on this machine and prints the id (`web/zitadel`) and a **preview sheet of every
+   candidate**. Open the preview and confirm the chosen one is the brand's real, current mark (a name like "Port" or
+   "Backstage" also matches unrelated things); if not, rerun with `--pick N`, or pass `--url` to the logo file from the
+   vendor's press or brand page. A square mark fits a node; a wide wordmark only when there is nothing else.
+3. Only if nothing official can be found (offline, or no logo anywhere) use a `generic/…` glyph and say so in one line.
+
+Never use one vendor's icon for another's product, never recolour or crop a logo, and confirm ids with `--check` if
+unsure. When you deliver, name the logos that came from the internet and where from (`fetch_logo.py --list`).
 
 ### 5. Write the script
 
@@ -148,8 +164,9 @@ edits, and build to a new name if both are wanted.
 
 ## Rules that always hold
 
-- Official icons only, from the bundled library, unaltered; a brand's logo only for that brand's product, never as
-  decoration. Generic glyphs only for things without a brand.
+- Real, official icons and logos for every branded thing, unaltered: from the bundled library, else fetched with
+  `fetch_logo.py` and checked by eye. A brand's logo only for that brand's product, never as decoration. Generic glyphs
+  only for things without a brand, or when no official logo exists (and say so).
 - Every diagram answers one question; anything that doesn't help answer it is left out.
 - Labels are the user's words; names and numbers are theirs or clearly fictional; nothing presented as real that isn't
   (label a proposed design "proposed").

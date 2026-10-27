@@ -12,6 +12,7 @@ Use them unaltered (no recolouring, cropping or redrawing of a vendor's icon).
 | `logo/` | gilbarbara/logos (SVG Porn), github.com/gilbarbara/logos | CC0 1.0. The marks themselves remain the trademarks of their owners. |
 | `si/` | Simple Icons, simpleicons.org | CC0 1.0, drawn in each brand's official colour; marks remain trademarks of their owners. |
 | `generic/` | Lucide, lucide.dev | ISC licence. |
+| `web/` (not bundled) | Fetched on demand by `scripts/fetch_logo.py` into `~/.motion-diagrams/icons`, each with its source URL and licence in that folder's `index.json`: the vendor's own site, gilbarbara/logos (CC0), Devicon (MIT), Simple Icons (CC0), the brand's GitHub organisation avatar, Wikimedia Commons (per file). | Logos remain trademarks of their owners; use unaltered, only to depict that product. |
 
 Trademark note: brand logos identify the product they belong to. Use a brand's logo only for that
 product, never as decoration or to imply endorsement.
